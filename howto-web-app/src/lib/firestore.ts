@@ -13,6 +13,8 @@ import {
   serverTimestamp,
   increment,
   writeBatch,
+  arrayUnion,
+  arrayRemove,
 } from 'firebase/firestore';
 import {
   ref,
@@ -22,7 +24,7 @@ import {
 } from 'firebase/storage';
 import { db, storage } from './firebase';
 import { generateId } from './utils';
-import type { Presentation, Slide, Resource, CreatePresentationData, ForkInfo } from './types';
+import type { Presentation, Slide, Resource, CreatePresentationData, ForkInfo, User, UserRole } from './types';
 
 // Helper to recursively strip undefined values so Firestore never rejects data
 export function sanitizeForFirestore<T>(data: T): T {
@@ -56,7 +58,8 @@ export async function createPresentation(
   userId: string,
   userName: string,
   userPhoto: string | null,
-  data: CreatePresentationData
+  data: CreatePresentationData,
+  ownerUsername?: string
 ): Promise<Presentation> {
   const id = generateId();
   const now = Date.now();
@@ -78,6 +81,7 @@ export async function createPresentation(
     ownerId: userId,
     ownerName: userName,
     ownerPhoto: userPhoto,
+    ownerUsername: ownerUsername || (data as any).ownerUsername || undefined,
     visibility: data.visibility || 'private',
     version: 1,
     createdAt: now,
@@ -171,6 +175,29 @@ export async function getUserPresentations(userId: string): Promise<Presentation
     return data as Presentation;
   });
   return items.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+}
+
+export async function getPublicPresentations(): Promise<Presentation[]> {
+  try {
+    const q = query(
+      collection(db, 'presentations'),
+      where('visibility', '==', 'public')
+    );
+    const snap = await getDocs(q);
+    const items = snap.docs.map((d) => {
+      const data = d.data() as any;
+      if (data.slidesJson && !data.hasSlideChunks) {
+        try {
+          data.slides = JSON.parse(data.slidesJson);
+        } catch {}
+      }
+      return data as Presentation;
+    });
+    return items.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  } catch (err) {
+    console.error('Failed to fetch public presentations:', err);
+    return [];
+  }
 }
 
 export async function updatePresentation(
@@ -352,12 +379,25 @@ export async function forkPresentation(
   originalId: string,
   userId: string,
   userName: string,
-  userPhoto: string | null
+  userPhoto: string | null,
+  userUsername?: string
 ): Promise<Presentation> {
   const original = await getPresentation(originalId);
   if (!original) throw new Error('Original presentation not found');
   if (original.visibility === 'private' && original.ownerId !== userId) {
     throw new Error('Cannot fork a private presentation');
+  }
+
+  // Ensure original owner's username is resolved for attribution
+  let originalOwnerUsername = original.ownerUsername;
+  if (!originalOwnerUsername && original.ownerId) {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', original.ownerId));
+      if (userDoc.exists()) {
+        const uData = userDoc.data();
+        if (uData?.username) originalOwnerUsername = uData.username;
+      }
+    } catch {}
   }
 
   const id = generateId();
@@ -367,9 +407,11 @@ export async function forkPresentation(
     originalId: original.id,
     originalOwnerId: original.ownerId,
     originalOwnerName: original.ownerName,
+    originalOwnerUsername: originalOwnerUsername || undefined,
     originalTitle: original.title,
-    baseVersion: original.version,
-    lastSyncedVersion: original.version,
+    forkedAt: now,
+    baseVersion: original.version || 1,
+    lastSyncedVersion: original.version || 1,
   };
 
   // Deep copy slides with new IDs
@@ -386,6 +428,7 @@ export async function forkPresentation(
     description: original.description,
     ownerId: userId,
     ownerName: userName,
+    ownerUsername: userUsername || undefined,
     ownerPhoto: userPhoto,
     visibility: 'private',
     version: 1,
@@ -397,12 +440,20 @@ export async function forkPresentation(
     forkCount: 0,
   };
 
-  // Save fork and increment original's fork count
+  // Save fork, increment original's fork count, and award +25 Creator Points to original author
   const batch = writeBatch(db);
   batch.set(doc(db, 'presentations', id), fork);
   batch.update(doc(db, 'presentations', originalId), {
     forkCount: increment(1),
   });
+
+  if (original.ownerId && original.ownerId !== userId) {
+    batch.update(doc(db, 'users', original.ownerId), {
+      creatorScore: increment(25),
+      forksReceived: increment(1),
+    });
+  }
+
   await batch.commit();
 
   return fork;
@@ -479,14 +530,251 @@ export async function pullUpdates(forkId: string): Promise<{
   return { success: true, conflicts };
 }
 
-// ─── Public Presentations ────────────────────────────────────
+// ─── Username & Creator Search ───────────────────────────────
 
-export async function getPublicPresentations(): Promise<Presentation[]> {
+export function normalizeUsername(raw: string): string {
+  if (!raw) return '';
+  let cleaned = raw.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+  return cleaned ? `@${cleaned}` : '';
+}
+
+export async function checkUsernameAvailable(
+  username: string,
+  currentUserId?: string
+): Promise<boolean> {
+  const norm = normalizeUsername(username);
+  if (!norm || norm.length < 4) return false;
+
   const q = query(
-    collection(db, 'presentations'),
-    where('visibility', '==', 'public')
+    collection(db, 'users'),
+    where('username', '==', norm)
   );
   const snap = await getDocs(q);
-  const items = snap.docs.map((d) => d.data() as Presentation);
-  return items.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  if (snap.empty) return true;
+
+  if (currentUserId && snap.docs[0].data().uid === currentUserId) {
+    return true;
+  }
+  return false;
 }
+
+export async function updateUserUsername(
+  userId: string,
+  rawUsername: string
+): Promise<{ success: boolean; error?: string }> {
+  const norm = normalizeUsername(rawUsername);
+  if (!norm || norm.length < 4) {
+    return { success: false, error: 'Username must be at least 3 characters (e.g. @abc123)' };
+  }
+
+  const isAvailable = await checkUsernameAvailable(norm, userId);
+  if (!isAvailable) {
+    return { success: false, error: `Username ${norm} is already taken. Please choose another.` };
+  }
+
+  await updateDoc(doc(db, 'users', userId), {
+    username: norm,
+  });
+
+  return { success: true };
+}
+
+export async function searchUsersByUsername(searchQuery: string): Promise<User[]> {
+  const norm = searchQuery.trim().toLowerCase().replace(/^@/, '');
+  if (!norm) return [];
+
+  const snap = await getDocs(collection(db, 'users'));
+  const allUsers = snap.docs.map((d) => d.data() as User);
+
+  return allUsers.filter((u) => {
+    const uName = (u.username || '').toLowerCase();
+    const dName = (u.displayName || '').toLowerCase();
+    return uName.includes(norm) || dName.includes(norm);
+  });
+}
+
+export async function getPublicPresentationsByUserId(userId: string): Promise<Presentation[]> {
+  try {
+    const q = query(
+      collection(db, 'presentations'),
+      where('ownerId', '==', userId),
+      where('visibility', '==', 'public')
+    );
+    const snap = await getDocs(q);
+    const items = snap.docs.map((d) => {
+      const data = d.data() as any;
+      if (data.slidesJson && !data.hasSlideChunks) {
+        try {
+          data.slides = JSON.parse(data.slidesJson);
+        } catch {}
+      }
+      return data as Presentation;
+    });
+    return items.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  } catch (err) {
+    console.error('Failed to get public presentations for user:', err);
+    return [];
+  }
+}
+
+export async function getFeaturedCreators(limitCount = 12): Promise<User[]> {
+  try {
+    const snap = await getDocs(collection(db, 'users'));
+    const users = snap.docs.map((d) => d.data() as User);
+    return users
+      .filter((u) => Boolean(u.username))
+      .sort((a, b) => (b.creatorScore || 0) - (a.creatorScore || 0) || (b.createdAt || 0) - (a.createdAt || 0))
+      .slice(0, limitCount);
+  } catch (err) {
+    console.error('Failed to get featured creators:', err);
+    return [];
+  }
+}
+
+export async function toggleLikePresentation(
+  presentationId: string,
+  userId: string
+): Promise<{ liked: boolean; likesCount: number; creatorScoreDelta: number }> {
+  const presRef = doc(db, 'presentations', presentationId);
+  const presSnap = await getDoc(presRef);
+  if (!presSnap.exists()) throw new Error('Presentation not found');
+
+  const presData = presSnap.data() as Presentation;
+  const likedBy = presData.likedBy || [];
+  const isCurrentlyLiked = likedBy.includes(userId);
+  const ownerId = presData.ownerId;
+
+  const batch = writeBatch(db);
+
+  if (isCurrentlyLiked) {
+    // Unlike: remove userId, decrement likesCount
+    batch.update(presRef, {
+      likedBy: arrayRemove(userId),
+      likesCount: increment(-1),
+    });
+    // Deduct 10 points from presentation author if not self-like
+    if (ownerId && ownerId !== userId) {
+      batch.update(doc(db, 'users', ownerId), {
+        creatorScore: increment(-10),
+        likesReceived: increment(-1),
+      });
+    }
+    await batch.commit();
+    return {
+      liked: false,
+      likesCount: Math.max(0, (presData.likesCount || 1) - 1),
+      creatorScoreDelta: -10,
+    };
+  } else {
+    // Like: add userId, increment likesCount
+    batch.update(presRef, {
+      likedBy: arrayUnion(userId),
+      likesCount: increment(1),
+    });
+    // Award 10 points to presentation author if not self-like
+    if (ownerId && ownerId !== userId) {
+      batch.update(doc(db, 'users', ownerId), {
+        creatorScore: increment(10),
+        likesReceived: increment(1),
+      });
+    }
+    await batch.commit();
+    return {
+      liked: true,
+      likesCount: (presData.likesCount || 0) + 1,
+      creatorScoreDelta: 10,
+    };
+  }
+}
+
+export async function updateUserRole(
+  userId: string,
+  role: UserRole
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await updateDoc(doc(db, 'users', userId), { role });
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to update user role:', err);
+    return { success: false, error: err?.message || 'Failed to update role' };
+  }
+}
+
+export async function toggleFollowUser(
+  currentUserId: string,
+  targetUserId: string
+): Promise<{ following: boolean }> {
+  if (currentUserId === targetUserId) {
+    throw new Error('You cannot follow yourself');
+  }
+
+  const currentUserRef = doc(db, 'users', currentUserId);
+  const targetUserRef = doc(db, 'users', targetUserId);
+
+  const currentUserSnap = await getDoc(currentUserRef);
+  if (!currentUserSnap.exists()) throw new Error('Current user not found');
+
+  const currentUserData = currentUserSnap.data() as User;
+  const followingList = currentUserData.following || [];
+  const isCurrentlyFollowing = followingList.includes(targetUserId);
+
+  const batch = writeBatch(db);
+
+  if (isCurrentlyFollowing) {
+    // Unfollow
+    batch.update(currentUserRef, {
+      following: arrayRemove(targetUserId),
+      followingCount: increment(-1),
+    });
+    batch.update(targetUserRef, {
+      followers: arrayRemove(currentUserId),
+      followersCount: increment(-1),
+      creatorScore: increment(-15),
+    });
+    await batch.commit();
+    return { following: false };
+  } else {
+    // Follow
+    batch.update(currentUserRef, {
+      following: arrayUnion(targetUserId),
+      followingCount: increment(1),
+    });
+    batch.update(targetUserRef, {
+      followers: arrayUnion(currentUserId),
+      followersCount: increment(1),
+      creatorScore: increment(15),
+    });
+    await batch.commit();
+    return { following: true };
+  }
+}
+
+export async function getFollowedUsers(userId: string): Promise<User[]> {
+  try {
+    const userRef = doc(db, 'users', userId);
+    const snap = await getDoc(userRef);
+    if (!snap.exists()) return [];
+
+    const data = snap.data() as User;
+    const followingIds = data.following || [];
+    if (followingIds.length === 0) return [];
+
+    const userDocs = await Promise.all(
+      followingIds.map((id) => getDoc(doc(db, 'users', id)))
+    );
+
+    const followedUsers: User[] = [];
+    for (const d of userDocs) {
+      if (d.exists()) {
+        followedUsers.push(d.data() as User);
+      }
+    }
+
+    return followedUsers.sort((a, b) => (b.creatorScore || 0) - (a.creatorScore || 0));
+  } catch (err) {
+    console.error('Failed to get followed users:', err);
+    return [];
+  }
+}
+
+

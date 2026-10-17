@@ -3,6 +3,7 @@
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import Logo from '@/components/ui/Logo';
 import styles from './navbar.module.css';
 
 export default function Navbar() {
@@ -14,16 +15,14 @@ export default function Navbar() {
   if (!user) return null;
 
   const navItems = [
-    { label: 'Home', icon: '🏠', path: '/home' },
     { label: 'Workspace', icon: '📑', path: '/dashboard' },
-    { label: 'Profile', icon: '👤', path: '/profile' },
   ];
 
   return (
     <nav className={styles.navbar}>
       <div className={styles.navLeft}>
-        <div className={styles.logo} onClick={() => router.push('/home')}>
-          <img src="/favicon.png" alt="HowTo-Web" className={styles.logoImg} />
+        <div className={styles.logo} onClick={() => router.push('/dashboard')}>
+          <Logo size={28} style={{ borderRadius: 8 }} />
           <span className={styles.logoText}>HowTo-Web</span>
         </div>
 

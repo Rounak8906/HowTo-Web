@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import dynamic from 'next/dynamic';
 import type { InSlideExcalidrawProps } from './InSlideExcalidrawInner';
 
@@ -34,3 +35,5 @@ const DynamicInSlideExcalidraw = dynamic(
 export default function InSlideExcalidraw(props: InSlideExcalidrawProps) {
   return <DynamicInSlideExcalidraw {...props} />;
 }
+
+export type { InSlideExcalidrawProps };

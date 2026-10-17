@@ -1,14 +1,57 @@
 // Data types for HowTo-Web
 
+export type UserRole = 'teacher' | 'learner' | 'creator';
+
+export interface RoleDetails {
+  label: string;
+  title: string;
+  network: string;
+  icon: string;
+  desc: string;
+}
+
+export const ROLE_INFO: Record<UserRole, RoleDetails> = {
+  teacher: {
+    label: 'Teacher',
+    title: 'Teacher',
+    network: 'Teachers Network',
+    icon: '🎓',
+    desc: 'Educators, professors, tutors & instructors creating interactive lessons and course material.',
+  },
+  learner: {
+    label: 'Learner',
+    title: 'Learner',
+    network: 'Learners Network',
+    icon: '📚',
+    desc: 'Students, researchers & knowledge seekers exploring, learning, and remixing presentations.',
+  },
+  creator: {
+    label: 'Creator',
+    title: 'Creator',
+    network: 'Creator Network',
+    icon: '💡',
+    desc: 'Builders, tech speakers & innovators designing dynamic presentation experiences.',
+  },
+};
+
 export interface User {
   uid: string;
   displayName: string;
+  username: string; // e.g. '@abc123'
   email: string;
   photoURL: string | null;
+  role?: UserRole;
+  creatorScore?: number;
+  likesReceived?: number;
+  forksReceived?: number;
+  following?: string[]; // Array of user UIDs this user follows
+  followers?: string[]; // Array of user UIDs who follow this user
+  followingCount?: number;
+  followersCount?: number;
   createdAt: number;
 }
 
-export type SlideElementType = 'text' | 'image' | 'shape' | 'table' | 'code' | 'excalidraw';
+export type SlideElementType = 'text' | 'image' | 'shape' | 'table' | 'code' | 'excalidraw' | 'drawing';
 
 export interface SlideElement {
   id: string;
@@ -19,7 +62,8 @@ export interface SlideElement {
   height: number;
   content: string; // text content, image URL, code, SVG string, or description
   style: Record<string, string>;
-  shapeType?: 'rect' | 'circle' | 'arrow' | 'callout' | 'star';
+  shapeType?: 'rect' | 'circle' | 'arrow' | 'callout' | 'star' | 'cylinder' | 'cube' | 'diamond' | 'hexagon' | 'sticky';
+  shapeRealisticStyle?: 'shaded' | 'glass' | 'glossy' | 'neumorphic' | 'metallic';
   tableData?: {
     rows: string[][];
   };
@@ -59,7 +103,9 @@ export interface ForkInfo {
   originalId: string;
   originalOwnerId: string;
   originalOwnerName: string;
+  originalOwnerUsername?: string;
   originalTitle: string;
+  forkedAt?: number;
   baseVersion: number;
   lastSyncedVersion: number;
 }
@@ -70,6 +116,8 @@ export interface Presentation {
   description: string;
   ownerId: string;
   ownerName: string;
+  ownerUsername?: string;
+  ownerRole?: UserRole;
   ownerPhoto: string | null;
   visibility: 'private' | 'public';
   version: number;
@@ -79,6 +127,8 @@ export interface Presentation {
   slides: Slide[];
   forkOf: ForkInfo | null;
   forkCount: number;
+  likesCount?: number;
+  likedBy?: string[];
 }
 
 // For creating a new presentation

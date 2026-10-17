@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
+import Logo from './Logo';
 
 interface ModernLoginSignupProps {
   onSuccess?: () => void;
@@ -11,7 +12,7 @@ interface ModernLoginSignupProps {
 }
 
 export default function Component({
-  redirectUrl = '/dashboard',
+  redirectUrl = '/home',
   onSuccess,
   initialIsLogin = true,
 }: {
@@ -27,6 +28,7 @@ export default function Component({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   // Redirect if already logged in
@@ -214,7 +216,13 @@ export default function Component({
         await signIn(email, password);
         toast.success('Welcome back!');
       } else {
-        await signUp(email, password, fullName || 'Creator');
+        const cleanUser = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+        if (!cleanUser || cleanUser.length < 3) {
+          toast.error('Please enter a valid username of at least 3 characters (e.g. @abc123)');
+          setIsLoading(false);
+          return;
+        }
+        await signUp(email, password, fullName || 'Creator', `@${cleanUser}`);
         toast.success('Account created successfully!');
       }
       if (onSuccess) onSuccess();
@@ -315,25 +323,15 @@ export default function Component({
     </svg>
   );
 
-  const Logo = (
-    <div
+  const brandLogo = (
+    <Logo
+      size={54}
       style={{
-        background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)',
-        width: 46,
-        height: 46,
-        borderRadius: 12,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontWeight: 800,
-        fontSize: '1.25rem',
-        marginBottom: '0.75rem',
-        boxShadow: '0 0 20px rgba(99, 102, 241, 0.5)',
-        color: '#ffffff',
+        marginBottom: '0.85rem',
+        borderRadius: 14,
+        boxShadow: '0 0 24px rgba(167, 139, 250, 0.4)',
       }}
-    >
-      HW
-    </div>
+    />
   );
 
   const Footer = (
@@ -417,7 +415,7 @@ export default function Component({
       >
         {isLogin ? (
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-            {Logo}
+            {brandLogo}
             <h1 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.25rem', letterSpacing: '-0.025em' }}>
               Sign in to HowTo-Web
             </h1>
@@ -507,7 +505,7 @@ export default function Component({
           </div>
         ) : (
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-            {Logo}
+            {brandLogo}
             <h1 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.25rem', letterSpacing: '-0.025em' }}>
               Create an Account
             </h1>
@@ -541,6 +539,35 @@ export default function Component({
                 onChange={(e) => setFullName(e.target.value)}
                 required
               />
+              <div style={{ position: 'relative', width: '100%' }}>
+                <span style={{
+                  position: 'absolute',
+                  left: '0.85rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#818cf8',
+                  fontWeight: 700,
+                  fontSize: '0.95rem',
+                  pointerEvents: 'none',
+                  userSelect: 'none'
+                }}>
+                  @
+                </span>
+                <input
+                  style={{ ...inputStyle, paddingLeft: '2rem' }}
+                  type="text"
+                  placeholder="username (e.g. abc123)"
+                  value={username.startsWith('@') ? username.slice(1) : username}
+                  onChange={(e) => {
+                    const val = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                    setUsername(val ? `@${val}` : '');
+                  }}
+                  required
+                />
+              </div>
+              <p style={{ fontSize: '0.72rem', color: '#94a3b8', margin: '-0.35rem 0 0 0.2rem' }}>
+                Your unique creator handle (e.g. <span style={{ color: '#818cf8', fontWeight: 600 }}>@abc123</span>) for search & discovery
+              </p>
               <input
                 style={inputStyle}
                 type="email"

@@ -1,297 +1,645 @@
-.profilePage {
-  min-height: 100dvh;
+/* Professional Executive Profile Page Styles */
+
+.profileContainer {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  background: #000000;
+  color: #ffffff;
   display: flex;
   flex-direction: column;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  padding-bottom: 120px; /* Space for hanging navbar */
+  overflow-x: hidden;
 }
 
-.header {
+.mainWrapper {
+  position: relative;
+  z-index: 10;
+  max-width: 820px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 32px 24px 60px;
+}
+
+/* Header bar */
+.topNavRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-4) var(--space-8);
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-default);
-  position: sticky;
-  top: 0;
-  z-index: var(--z-sticky);
+  margin-bottom: 32px;
 }
 
-.headerLeft {
-  display: flex;
+.backBtn {
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(12px);
 }
 
-.logo {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  cursor: pointer;
+.backBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  transform: translateX(-2px);
 }
 
-.logoIcon {
-  font-size: 1.5rem;
-  color: var(--accent-blue);
-}
-
-.logoText {
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
+.pageHeading {
+  font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.02em;
+  color: #ffffff;
 }
 
-.headerRight {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.main {
-  flex: 1;
-  max-width: 900px;
-  width: 100%;
-  margin: 0 auto;
-  padding: var(--space-8) var(--space-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-}
-
-/* ─── Hero Profile Card ─────────────────────────────── */
+/* Main Profile Card */
 .profileCard {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-xl);
-  padding: var(--space-8);
+  background: rgba(16, 20, 32, 0.72);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 36px;
+  box-shadow: 
+    0 24px 48px -12px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+  margin-bottom: 24px;
+}
+
+.userHeader {
   display: flex;
   align-items: center;
-  gap: var(--space-6);
-  position: relative;
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
+  gap: 24px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.profileCard::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: var(--gradient-primary);
-}
-
-.avatarWrapper {
+.avatarLargeWrapper {
   position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  padding: 3px;
+  background: linear-gradient(135deg, #6366f1, #06b6d4);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
   flex-shrink: 0;
 }
 
-.avatar {
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  background: var(--gradient-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-size: 2.25rem;
-  font-weight: 800;
-  color: #ffffff;
-  overflow: hidden;
-  box-shadow: 0 0 24px rgba(99, 102, 241, 0.35);
-  border: 3px solid rgba(255, 255, 255, 0.15);
-}
-
-.avatar img {
+.avatarImg {
   width: 100%;
   height: 100%;
+  border-radius: 50%;
   object-fit: cover;
+  background: #131724;
 }
 
-.avatarUploadBtn {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 30px;
-  height: 30px;
+.avatarInitial {
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
-  background: var(--accent-blue);
-  color: white;
-  border: 2px solid var(--bg-secondary);
+  background: #151a2d;
+  color: #ffffff;
+  font-size: 32px;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
-  cursor: pointer;
-  transition: transform var(--transition-fast);
 }
 
-.avatarUploadBtn:hover {
-  transform: scale(1.15);
-}
-
-.profileInfo {
+.userInfo {
   flex: 1;
   min-width: 0;
 }
 
-.nameRow {
+.displayNameRow {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-1);
+  gap: 12px;
+  margin-bottom: 4px;
 }
 
-.userName {
-  font-family: var(--font-display);
-  font-size: var(--text-2xl);
+.displayName {
+  font-size: 22px;
   font-weight: 700;
+  color: #ffffff;
   letter-spacing: -0.02em;
 }
 
-.nameEditForm {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.nameInput {
-  background: var(--bg-elevated);
-  border: 1.5px solid var(--accent-blue);
-  border-radius: var(--radius-sm);
-  padding: 6px 12px;
-  font-family: var(--font-display);
-  font-size: var(--text-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  outline: none;
-}
-
-.userEmail {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-}
-
-.roleBadge {
+.badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  padding: 3px 10px;
+  border-radius: 9999px;
   background: rgba(99, 102, 241, 0.15);
-  color: var(--accent-violet);
   border: 1px solid rgba(99, 102, 241, 0.3);
-  padding: 2px 10px;
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
+  color: #a5b4fc;
+  font-size: 11px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-/* ─── Stats Grid ────────────────────────────────────── */
-.statsGrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-4);
+.usernameRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  margin-bottom: 8px;
 }
 
-.statCard {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5);
+.usernameDisplayWrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.usernameBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.14);
+  border: 1px solid rgba(99, 102, 241, 0.38);
+  color: #818cf8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.editUsernameGroup {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-1);
-  transition: transform var(--transition-fast), border-color var(--transition-fast);
+  gap: 8px;
 }
 
-.statCard:hover {
-  transform: translateY(-2px);
-  border-color: var(--border-accent);
+.editUsernameWrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
 }
 
-.statIcon {
-  font-size: 1.5rem;
-  margin-bottom: var(--space-1);
+.atSymbol {
+  position: absolute;
+  left: 10px;
+  color: #818cf8;
+  font-weight: 700;
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.editUsernameInput {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(99, 102, 241, 0.5);
+  border-radius: 8px;
+  padding: 7px 12px 7px 26px;
+  color: #ffffff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+  width: 200px;
+  transition: all 0.2s ease;
+}
+
+.editUsernameInput:focus {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+}
+
+.userEmail {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 12px;
+}
+
+.editNameInput {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  padding: 8px 14px;
+  color: #ffffff;
+  font-size: 15px;
+  outline: none;
+  width: 100%;
+  max-width: 280px;
+  transition: all 0.2s ease;
+}
+
+.editNameInput:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+}
+
+.nameActionBtns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.saveBtn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: #6366f1;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.saveBtn:hover {
+  background: #4f46e5;
+}
+
+.cancelBtn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.editToggleBtn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.editToggleBtn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Stats Row */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.statItem {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 .statValue {
-  font-family: var(--font-display);
-  font-size: var(--text-3xl);
-  font-weight: 800;
-  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
   letter-spacing: -0.02em;
 }
 
 .statLabel {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* Points & Creator Score Card */
+.scoreCard {
+  background: rgba(16, 20, 32, 0.72);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(168, 85, 247, 0.28);
+  border-radius: 24px;
+  padding: 28px 36px;
+  box-shadow: 
+    0 20px 40px -15px rgba(0, 0, 0, 0.6),
+    0 0 24px rgba(168, 85, 247, 0.08);
+  margin-bottom: 24px;
+}
+
+.scoreHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.scoreHeroValue {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.scoreNumber {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, #fbbf24 0%, #f43f5e 50%, #c084fc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.scoreUnit {
+  font-size: 15px;
+  color: #94a3b8;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
-/* ─── Settings Section ──────────────────────────────── */
-.sectionTitle {
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
+.scoreBreakdownGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.scoreBreakdownItem {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.scoreItemIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  background: rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+
+.scoreItemMeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.scoreItemTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.scoreItemSubtitle {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.scoreItemPts {
+  font-size: 13px;
   font-weight: 700;
-  margin-bottom: var(--space-4);
+  color: #38bdf8;
 }
 
+/* Network Role Selection Section */
+.roleSection {
+  margin-top: 14px;
+}
+
+.roleCardsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.roleCard {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 18px 16px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  position: relative;
+}
+
+.roleCard:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(99, 102, 241, 0.35);
+  transform: translateY(-2px);
+}
+
+.roleCardActive {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: #818cf8;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.25);
+}
+
+.roleIconBadge {
+  font-size: 26px;
+  margin-bottom: 8px;
+}
+
+.roleTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 2px;
+}
+
+.roleNetworkName {
+  font-size: 11px;
+  font-weight: 600;
+  color: #818cf8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.roleDesc {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.roleActiveCheck {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #818cf8;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Settings & Preferences Card */
 .settingsCard {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
+  background: rgba(16, 20, 32, 0.72);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 28px 36px;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+  margin-bottom: 24px;
+}
+
+.cardSectionTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 20px;
+  letter-spacing: -0.01em;
 }
 
 .settingRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-4) var(--space-6);
-  border-bottom: 1px solid var(--border-subtle);
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .settingRow:last-child {
   border-bottom: none;
+  padding-bottom: 0;
 }
 
-.settingInfo h4 {
-  font-size: var(--text-sm);
+.settingLeft {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.settingIcon {
+  color: #818cf8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settingTitle {
+  font-size: 14px;
   font-weight: 600;
-  margin-bottom: 2px;
+  color: #ffffff;
 }
 
-.settingInfo p {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
+.settingDesc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 2px;
 }
 
-/* ─── Responsive ────────────────────────────────────── */
-@media (max-width: 768px) {
+.themeToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.themeToggleBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* Logout Button */
+.logoutCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  border-radius: 18px;
+  padding: 20px 28px;
+  margin-top: 12px;
+}
+
+.logoutInfoTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.logoutInfoDesc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 2px;
+}
+
+.logoutBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.logoutBtn:hover {
+  background: #ef4444;
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.4);
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
   .profileCard {
+    padding: 24px 20px;
+  }
+  .userHeader {
     flex-direction: column;
     text-align: center;
+    gap: 16px;
   }
-
-  .nameRow {
+  .displayNameRow {
     justify-content: center;
   }
-
-  .userEmail {
-    justify-content: center;
-  }
-
   .statsGrid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
+  }
+  .settingsCard {
+    padding: 20px;
+  }
+  .logoutCard {
+    flex-direction: column;
+    gap: 14px;
+    align-items: flex-start;
   }
 }

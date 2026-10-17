@@ -1,53 +1,75 @@
 # HowTo-Web
 
-A web-based platform for creating, presenting, sharing, and reusing interactive technical presentations with slide-specific resources.
+### Interactive presentations with everything you need, right where you present.
 
-## Overview
+**HowTo-Web** is a web-based presentation platform built for **technical presentations, tutorials, workshops, demonstrations, and teaching**.
 
-**HowTo-Web** is a web-based presentation platform designed for teaching, technical demonstrations, workshops, tutorials, and project presentations.
+Instead of switching between presentation software, code editors, PDFs, browsers, file explorers, and media players, HowTo-Web brings the content and its supporting resources together in a single presentation environment.
 
-Traditional presentations often require presenters to switch between multiple applications such as PowerPoint, VS Code, PDF viewers, browsers, file explorers, and media players.
-
-HowTo-Web brings these resources together within the presentation itself.
-
-Each slide can contain its own supporting resources, allowing the presenter to access relevant files, documentation, code, media, and notes without leaving the platform.
-
-The platform combines this resource-based presentation model with a **GitHub-inspired Fork and Pull workflow**, allowing users to reuse and independently modify public presentations.
+> **Present. Explain. Explore. Reuse.**
 
 ---
 
-## Core Concept
+## ✨ Overview
 
-HowTo-Web uses a split-screen presentation interface:
+Technical presentations often require more than slides.
+
+A presenter may need to show:
+
+* Source code
+* Documentation
+* Images
+* PDFs
+* Videos
+* Examples
+* Notes
+* External links
+* Supporting files
+
+HowTo-Web connects these resources directly to the slide they belong to.
+
+This creates a presentation experience where the **slide is the central context**, while everything needed to explain it is available alongside it.
+
+---
+
+## 🎯 What Makes HowTo-Web Different?
+
+### Traditional Workflow
 
 ```text
-┌──────────────────────────────────────────────────────────────┐
-│                                                              │
-│                 Presentation Content                         │
-│                                                              │
-│                         70%                                  │
-│                                                              │
-│───────────────────────╱──────────────────────────────────────│
-│                       ╱                                      │
-│              Resources / Context                             │
-│                       30%                                    │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
+Presentation → VS Code → PDF → Browser → File Explorer → Video
+       ↑__________________________________________________|
+                    Constant application switching
 ```
 
-The default layout is **70/30**, with the presentation occupying the primary area and a contextual resource panel alongside it.
+### HowTo-Web Workflow
 
-The divider can be dragged to adjust the layout according to the presenter's requirements.
+```text
+                 HOWTO-WEB
+
+┌────────────────────────────────────────────────────┐
+│                                                    │
+│              PRESENTATION CONTENT                  │
+│                                                    │
+│                     70%                            │
+│                                                    │
+│──────────────────────────────────────────────╱─────│
+│                                            ╱       │
+│              RESOURCES & CONTEXT          ╱        │
+│                                          30%       │
+│                                                    │
+└────────────────────────────────────────────────────┘
+```
+
+The presentation remains the primary focus while the resources required for that particular slide stay immediately accessible.
 
 ---
 
-# Features
+# 🚀 Key Features
 
-## Presentation Editor
+## 🖥️ Presentation Editor
 
-HowTo-Web provides a presentation editor for creating and organizing slides.
-
-Supported elements include:
+Create and organize presentations with support for common presentation elements:
 
 * Text
 * Images
@@ -56,125 +78,114 @@ Supported elements include:
 * Backgrounds
 * Videos
 * Basic animations and transitions
-
-Users can:
-
-* Create presentations
-* Add slides
-* Delete slides
-* Reorder slides
-* Edit slide content
-* Save presentations
+* Slide creation and deletion
+* Slide reordering
+* Presentation saving
 
 ---
 
-## Dynamic 70/30 Layout
+## 📐 Flexible 70/30 Presentation Layout
 
-Every presentation uses a default **70/30 split layout**.
+HowTo-Web introduces a distinctive **presentation + context** interface.
 
-The divider between the presentation and resource panel is draggable.
+### Default Layout
 
-Supported layouts can include:
+**70% — Presentation**
 
-* 70/30
-* 60/40
-* 65/35
-* 80/20
+**30% — Resources & Context**
 
-A reset option returns the layout to the default 70/30 configuration.
+The divider can be adjusted according to the presenter's needs.
 
-The diagonal divider is a core visual element of HowTo-Web and provides a distinct interface for separating presentation content from contextual resources.
+Possible layouts include:
 
-### Viewer-Side Resizing
+```text
+70 / 30
+60 / 40
+65 / 35
+80 / 20
+```
 
-A viewer can resize the divider according to their own preference.
+The default layout can be restored at any time.
 
-This change is local to that viewer and does not modify:
-
-* The original presentation
-* The stored presentation layout
-* Other viewers' layouts
+Importantly, viewer-side resizing is local to that viewer and does not modify the original presentation or affect other viewers.
 
 ---
 
-# Slide-Specific Resources
+# 📎 Slide-Specific Resources
 
-Each slide can have its own collection of resources.
+Resources are attached to **individual slides**, rather than being treated as one global collection.
 
-A slide may contain zero, one, or multiple resources.
-
-Supported resource types can include:
-
-* Images
-* PDFs
-* Text files
-* Documents
-* Videos
-* Audio
-* Links
-* HTML
-* CSS
-* JavaScript
-* Python
-* C
-* C++
-* Java
-* ZIP archives
-* Other supported file formats
+A slide can contain zero, one, or multiple resources.
 
 For example:
 
 ```text
-Slide 1
-├── Notes
-├── introduction.pdf
-├── architecture.png
-└── reference.html
-
-Slide 2
-├── Notes
-├── example.py
-├── output.png
-└── documentation.pdf
-
-Slide 3
-├── Notes
-├── demo.mp4
-└── project.zip
+Presentation
+│
+├── Slide 1
+│   ├── Notes
+│   ├── introduction.pdf
+│   ├── architecture.png
+│   └── reference.html
+│
+├── Slide 2
+│   ├── Notes
+│   ├── example.py
+│   ├── output.png
+│   └── documentation.pdf
+│
+└── Slide 3
+    ├── Notes
+    ├── demo.mp4
+    └── project.zip
 ```
 
-Resources are associated with their respective slides rather than being stored as one global presentation collection.
+Supported resource categories can include:
+
+* Images
+* PDFs
+* Documents
+* Text files
+* Audio
+* Video
+* HTML
+* CSS
+* JavaScript
+* Python
+* C / C++
+* Java
+* ZIP archives
+* External links
+* Other supported formats
 
 ---
 
-# Resource Preview
+# 👀 Resource Preview
 
-HowTo-Web provides resource-specific actions where supported.
+HowTo-Web provides resource-specific viewing and preview capabilities.
 
-| Resource Type | Action            |
-| ------------- | ----------------- |
-| Image         | View              |
-| PDF           | View              |
-| Video         | Play              |
-| Audio         | Play              |
-| Text          | View              |
-| Source Code   | Code Viewer       |
-| HTML/CSS/JS   | Sandboxed Preview |
-| Link          | Open              |
+| Resource        | Experience          |
+| --------------- | ------------------- |
+| Image           | Image viewer        |
+| PDF             | PDF viewer          |
+| Video           | Media player        |
+| Audio           | Media player        |
+| Text            | Text viewer         |
+| Source Code     | Code viewer         |
+| HTML / CSS / JS | Sandboxed preview   |
+| Link            | External navigation |
 
-Source-code files such as Python, C, C++, and Java are treated as code resources and can be viewed within the platform.
+Source-code resources are intended to be **viewed rather than arbitrarily executed on the application server**.
 
-They are **not arbitrarily executed on the application server**.
-
-HTML, CSS, and JavaScript previews should use an appropriate sandboxed environment.
+Web previews should use appropriate sandboxing to isolate potentially unsafe content.
 
 ---
 
-# Slide Notes
+# 📝 Presenter Notes
 
-Each slide can contain multiple notes.
+Every slide can have its own notes.
 
-Notes provide additional information for the presenter, such as:
+Notes can contain:
 
 * Explanations
 * Teaching points
@@ -182,119 +193,85 @@ Notes provide additional information for the presenter, such as:
 * Reminders
 * Additional context
 
-Notes can be:
+Notes can also be added, edited, deleted, and reordered.
 
-* Added
-* Edited
-* Deleted
-* Reordered
-
-The notes interface is designed to be visually engaging while remaining useful during presentations.
+This allows presenters to keep supporting information available without overcrowding the presentation itself.
 
 ---
 
-# Presentation Mode
+# 🎤 Presentation Mode
 
-HowTo-Web includes a dedicated **Presentation Mode** for delivering presentations.
+**Presentation Mode** is designed specifically for delivering presentations.
 
-Presentation Mode minimizes editing-related controls and focuses on the presentation experience.
+It focuses the interface on the presentation experience while keeping the supporting resources accessible.
 
-The presenter can:
+Presenters can:
 
 * Navigate between slides
-* View slide notes
-* Open slide resources
+* View notes
+* Open resources
 * View images and PDFs
 * Play supported media
 * Preview supported web content
 * Resize the resource panel
-* Enter fullscreen mode
+* Enter fullscreen
 * Exit Presentation Mode
-
-The 70/30 presentation-resource layout remains available during presentation.
 
 ---
 
-# Screen Sharing
+# 🖥️ Built for Screen Sharing
 
-HowTo-Web is designed to work alongside existing screen-sharing platforms.
+HowTo-Web is designed to work alongside platforms such as:
 
-Examples include:
+**Google Meet · Zoom · Microsoft Teams · Discord**
 
-* Google Meet
-* Zoom
-* Microsoft Teams
-* Discord
+The goal is simple:
 
-The platform does not attempt to replace video-conferencing software.
-
-Instead, the presenter can share the HowTo-Web browser window and interact with slides and resources from a single interface.
-
-For example:
+> **Share one browser window instead of constantly switching between applications.**
 
 ```text
 Presenter
     │
     ▼
-HowTo-Web
-    │
-    ├── Presentation
-    ├── Notes
-    ├── Code
-    ├── PDF
-    ├── Images
-    └── Media
-    │
-    ▼
-Screen Sharing
-    │
-    ▼
-Audience
+┌──────────────────┐
+│    HowTo-Web      │
+│                  │
+│  Presentation    │
+│  Notes           │
+│  Code            │
+│  PDFs            │
+│  Images          │
+│  Media           │
+└────────┬─────────┘
+         │
+         ▼
+   Screen Sharing
+         │
+         ▼
+      Audience
 ```
 
----
-
-# Sharing
-
-Presentations can have different visibility levels.
-
-## Private
-
-Private presentations are accessible only to the owner and explicitly authorized users.
-
-## Public
-
-Public presentations can be accessed through a shareable URL.
-
-Public presentations can be viewed and presented by other users according to the platform's permission rules.
+HowTo-Web complements video-conferencing platforms rather than attempting to replace them.
 
 ---
 
-# Permission Model
+# 🔗 Sharing & Access
 
-HowTo-Web uses ownership and fork-based editing instead of allowing users to directly modify another person's presentation.
+Presentations can support different visibility levels.
 
-| Capability        | Owner | Viewer | Fork Owner |
-| ----------------- | ----: | -----: | ---------: |
-| View presentation |   Yes |    Yes |        Yes |
-| Present           |   Yes |    Yes |        Yes |
-| Open resources    |   Yes |    Yes |        Yes |
-| Resize divider    |   Yes |    Yes |        Yes |
-| Edit original     |   Yes |     No |         No |
-| Delete original   |   Yes |     No |         No |
-| Fork              |   Yes |    Yes |        Yes |
-| Edit fork         |     — |      — |        Yes |
-| Pull Updates      |     — |      — |        Yes |
+### 🔒 Private
 
-The fundamental rule is:
+Accessible only to the owner and explicitly authorized users.
 
-> **Users do not directly edit another person's original presentation. They Fork it, make their own changes, and maintain their own version.**
+### 🌐 Public
+
+Accessible through a shareable URL according to the platform's permission rules.
 
 ---
 
-# Fork Workflow
+# 🍴 GitHub-Inspired Fork & Pull
 
-HowTo-Web uses a workflow inspired by GitHub.
+One of HowTo-Web's core ideas is **presentation reuse without modifying the original**.
 
 A user viewing a public presentation can create a **Fork**.
 
@@ -302,7 +279,7 @@ A user viewing a public presentation can create a **Fork**.
 Original Presentation
         │
         ▼
-      Fork
+       Fork
         │
         ▼
 Independent Presentation
@@ -311,132 +288,86 @@ Independent Presentation
        Edit
 ```
 
-The fork becomes an independent presentation owned by the user who created it.
+The fork becomes an independent presentation owned by the user.
 
-Changes to the fork do not modify the original presentation.
+Changes to the fork do not modify the original.
 
-Similarly, changes made to the original do not automatically overwrite the fork.
+Changes to the original do not automatically overwrite the fork.
 
 ---
 
-# Fork Relationship
+# 🔄 Pull Updates
 
-The platform maintains the relationship between the original presentation and its forks.
+Forks can maintain a relationship with their original presentation.
 
-Relevant metadata can include:
-
-* Original presentation ID
-* Fork presentation ID
-* Original owner ID
-* Fork owner ID
-* Base version
-* Last synchronized version
-
-Conceptually:
+For example:
 
 ```text
-                 Original Presentation
-                         │
-          ┌──────────────┼──────────────┐
-          │              │              │
-          ▼              ▼              ▼
-       Fork A         Fork B         Fork C
-          │              │              │
-          ▼              ▼              ▼
-       User A          User B          User C
+Original Version : 1.4
+Fork Version     : 1.2
+
+        ↓
+
+Updates Available
 ```
 
-Each fork can evolve independently.
+The fork owner can use **Pull Updates** to incorporate changes from the original.
+
+The system is designed to avoid silently overwriting changes made to the fork. Where changes conflict, the platform can identify the conflict and provide a resolution mechanism.
 
 ---
 
-# Pull Updates
+# 📊 Dashboard
 
-When the original presentation is updated after a fork is created, the fork can detect that a newer version is available.
+The dashboard provides a focused overview of the user's presentations.
 
-Example:
+It can display:
 
-```text
-Original Version: 1.4
-Fork Version:     1.2
-
-Status: Updates Available
-```
-
-The fork owner can use **Pull Updates** to incorporate changes from the original presentation.
-
-Pulling updates should not silently destroy modifications made by the fork owner.
-
-If both the original and fork contain conflicting changes, the system should identify the conflict and provide an appropriate resolution mechanism.
-
----
-
-# Version Tracking
-
-Presentation versions are maintained to support the Fork and Pull workflow.
-
-A fork records the version of the original presentation from which it was created.
-
-This allows HowTo-Web to determine:
-
-* Whether the original has changed
-* Which version the fork is based on
-* Whether updates are available
-* Which changes need to be synchronized
-
----
-
-# Dashboard
-
-The dashboard provides an overview of the user's presentations.
-
-Each presentation can display information such as:
-
-* Title
+* Presentation title
 * Number of slides
 * Visibility
 * Last updated date
 * Fork information
 * Update status
 
-Available actions can include:
+Possible actions include:
 
-* Create
-* Edit
-* Delete
-* Duplicate
-* Present
-* Share
-* Change visibility
-* Pull Updates
+`Create` · `Edit` · `Delete` · `Duplicate` · `Present` · `Share` · `Change Visibility` · `Pull Updates`
 
-The dashboard should remain focused on presentation management rather than becoming a generic administrative interface.
+The dashboard is intended to remain focused on **presentation management**, rather than becoming a generic administrative system.
 
 ---
 
-# Architecture
+# 🏗️ Architecture
 
 HowTo-Web follows a structured web application architecture.
 
 ```text
-┌─────────────────────┐
-│      Frontend       │
-│ Presentation Editor │
-│ Viewer / Presenter  │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│     Backend / API   │
-│ Auth / Permissions  │
-│ Presentation Logic  │
-└───────┬───────┬─────┘
-        │       │
-        ▼       ▼
-   Database   File Storage
+┌──────────────────────────┐
+│         Frontend         │
+│                          │
+│  Presentation Editor     │
+│  Viewer / Presenter      │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│       Backend / API      │
+│                          │
+│ Authentication           │
+│ Authorization            │
+│ Presentation Logic       │
+│ Resource Management      │
+└────────────┬─────────────┘
+             │
+       ┌─────┴─────┐
+       ▼           ▼
+┌────────────┐ ┌─────────────┐
+│  Database  │ │ File Storage│
+└────────────┘ └─────────────┘
 ```
 
-The application should maintain structured relationships between its core entities.
+Core relationships:
 
 ```text
 User
@@ -447,7 +378,7 @@ User
        │
        └── Slides
              │
-             ├── Slide Elements
+             ├── Elements
              ├── Notes
              └── Resources
 ```
@@ -456,55 +387,11 @@ Fork relationships connect original presentations with their independent copies.
 
 ---
 
-# Data Model
+# 🔐 Security
 
-The core data model can include:
+HowTo-Web involves authentication, file uploads, sharing, and web previews, making security an important part of the platform.
 
-### User
-
-Stores authentication and account information.
-
-### Presentation
-
-Stores presentation-level information such as:
-
-* Title
-* Description
-* Owner
-* Visibility
-* Current version
-
-### PresentationVersion
-
-Stores version information required for tracking presentation changes.
-
-### Slide
-
-Stores individual slides belonging to a presentation.
-
-### SlideElement
-
-Stores elements placed on a slide.
-
-### Note
-
-Stores slide-specific presenter notes.
-
-### Resource
-
-Stores information about files, links, and other resources associated with a slide.
-
-### ForkRelationship
-
-Maintains the relationship between an original presentation and a fork.
-
----
-
-# Security
-
-Security is an important part of the platform because HowTo-Web supports user authentication, file uploads, sharing, and web previews.
-
-The application should implement:
+The application should enforce:
 
 * Authentication
 * Authorization
@@ -517,60 +404,33 @@ The application should implement:
 * Safe resource previews
 * Sandboxed HTML/CSS/JavaScript execution
 
-The backend must enforce access and editing permissions rather than relying only on frontend restrictions.
+Security restrictions should be enforced on the backend and not rely solely on frontend controls.
 
-Uploaded executable or source-code files must not be arbitrarily executed on the application server.
-
----
-
-# Responsive Design
-
-Desktop and laptop screens are the primary target because HowTo-Web is designed around presentation and screen-sharing workflows.
-
-The interface should still adapt to smaller screens.
-
-For mobile and tablet layouts, the presentation and resource areas can transition into a more suitable stacked interface rather than forcing the desktop 70/30 layout.
+Uploaded source-code and executable files should not be arbitrarily executed on the application server.
 
 ---
 
-# Technology Stack
+# 🛠️ Technology Stack
 
-The initial implementation is intended to use a modern web application stack.
+The project specification currently targets a modern web application stack:
 
-### Frontend
+| Layer           | Technology                 |
+| --------------- | -------------------------- |
+| Frontend        | React                      |
+| Language        | TypeScript                 |
+| Styling         | Modern CSS / Tailwind CSS  |
+| Backend         | REST API or equivalent     |
+| Database        | PostgreSQL                 |
+| Storage         | Secure object/file storage |
+| Version Control | Git + GitHub               |
 
-* React
-* TypeScript
-* Modern CSS / Tailwind CSS
-
-### Backend
-
-* REST API or equivalent API architecture
-* Authentication
-* Authorization
-* Presentation management
-* Resource management
-
-### Database
-
-* PostgreSQL
-
-### File Storage
-
-* Secure object/file storage
-
-### Development
-
-* Git
-* GitHub
-
-The technology stack may evolve during development without changing the core product concept.
+The technology stack may evolve as development progresses without changing the core HowTo-Web concept.
 
 ---
 
-# Development Roadmap
+# 🗺️ Roadmap
 
-## Phase 1 — Presentation Foundation
+### Phase 1 — Presentation Foundation
 
 * [ ] Authentication
 * [ ] Dashboard
@@ -578,12 +438,12 @@ The technology stack may evolve during development without changing the core pro
 * [ ] Slide creation
 * [ ] Slide deletion
 * [ ] Slide reordering
-* [ ] Basic slide editor
+* [ ] Basic editor
 * [ ] Text support
 * [ ] Image support
 * [ ] Presentation persistence
 
-## Phase 2 — Resource System
+### Phase 2 — Resource System
 
 * [ ] 70/30 layout
 * [ ] Diagonal divider
@@ -593,7 +453,7 @@ The technology stack may evolve during development without changing the core pro
 * [ ] File uploads
 * [ ] Resource preview
 
-## Phase 3 — Presentation Mode
+### Phase 3 — Presentation Mode
 
 * [ ] Presentation Mode
 * [ ] Slide navigation
@@ -605,7 +465,7 @@ The technology stack may evolve during development without changing the core pro
 * [ ] Sandboxed HTML/CSS/JS preview
 * [ ] Screen-sharing optimization
 
-## Phase 4 — Sharing
+### Phase 4 — Sharing
 
 * [ ] Public presentations
 * [ ] Private presentations
@@ -613,7 +473,7 @@ The technology stack may evolve during development without changing the core pro
 * [ ] Viewer permissions
 * [ ] Public presentation page
 
-## Phase 5 — Fork and Pull
+### Phase 5 — Fork & Pull
 
 * [ ] Fork public presentations
 * [ ] Independent editable copies
@@ -621,61 +481,47 @@ The technology stack may evolve during development without changing the core pro
 * [ ] Version tracking
 * [ ] Update detection
 * [ ] Pull Updates
-* [ ] Basic conflict handling
+* [ ] Conflict handling
 
 ---
 
-# MVP Workflow
-
-The MVP should demonstrate the complete core workflow:
+# 🔄 Core Workflow
 
 ```text
 Create Presentation
-        │
-        ▼
+        ↓
 Create Slides
-        │
-        ▼
-Attach Slide-Specific Resources
-        │
-        ▼
-Add Notes
-        │
-        ▼
+        ↓
+Attach Slide Resources
+        ↓
+Add Presenter Notes
+        ↓
 Enter Presentation Mode
-        │
-        ▼
-Interact With Resources
-        │
-        ▼
+        ↓
+Present & Access Resources
+        ↓
 Share Presentation
-        │
-        ▼
-Another User Views Presentation
-        │
-        ▼
-Viewer Forks Presentation
-        │
-        ▼
-Fork Owner Edits Their Version
-        │
-        ▼
-Original Presentation Is Updated
-        │
-        ▼
-Fork Detects Available Updates
-        │
-        ▼
-Fork Owner Pulls Updates
+        ↓
+Another User Views It
+        ↓
+Fork Presentation
+        ↓
+Edit Independent Version
+        ↓
+Original Gets Updated
+        ↓
+Fork Detects Update
+        ↓
+Pull Updates
 ```
 
-A successful MVP should prove that HowTo-Web can function as a complete presentation and resource workflow without requiring the presenter to constantly switch between external applications.
+The core objective is to create a complete presentation workflow where the presenter can explain a topic and access its supporting material without repeatedly leaving the presentation environment.
 
 ---
 
-# Project Scope
+# 🎯 Project Scope
 
-HowTo-Web is focused specifically on:
+HowTo-Web focuses on:
 
 * Presentation creation
 * Presentation delivery
@@ -686,7 +532,7 @@ HowTo-Web is focused specifically on:
 * Version tracking
 * Pulling updates from original presentations
 
-The project is **not** intended to become:
+It is **not intended to become**:
 
 * A Learning Management System
 * A video-conferencing platform
@@ -697,12 +543,12 @@ The project is **not** intended to become:
 
 ---
 
-# Future Improvements
+# 🔮 Future Possibilities
 
 Potential future improvements include:
 
 * Presentation templates
-* Presentation import/export
+* Import / export
 * Advanced animations and transitions
 * Additional resource formats
 * Improved conflict resolution
@@ -711,34 +557,38 @@ Potential future improvements include:
 * AI-assisted presentation creation
 * Presentation analytics
 
-These features remain secondary to the core HowTo-Web workflow.
+These remain secondary to the core presentation and resource workflow.
 
 ---
 
-# Project Status
+# 🚧 Project Status
 
 **In Development**
 
-HowTo-Web is being developed as a presentation platform that combines presentation content, contextual resources, and version-controlled reuse within a single web application.
+HowTo-Web is being developed around a simple idea:
+
+> **A presentation should contain everything needed to explain the topic.**
+
+The project combines presentation content, slide-specific resources, presenter notes, presentation mode, sharing, and GitHub-inspired versioned reuse into one platform.
 
 ---
 
-# Author
+# 👨‍💻 Author
 
-**Rounak Singh**
+### Rounak Singh
 
-AI & ML Engineering Student
+**AI & ML Engineering Student**
 
-GitHub: [Rounak8906](https://github.com/Rounak8906)
+[GitHub — @Rounak8906](https://github.com/Rounak8906)
 
 ---
 
-## Project Vision
+## 🌟 Project Vision
 
-HowTo-Web aims to make technical and educational presentations more than a sequence of slides.
+HowTo-Web aims to transform presentations from simple sequences of slides into **self-contained learning and demonstration environments**.
 
-Instead, each slide can become a **self-contained learning or demonstration environment**, containing the presentation content, supporting resources, notes, examples, and interactive material required to explain the topic.
+Each slide can contain the content, resources, notes, examples, and interactive material needed to explain its topic.
 
-The goal is simple:
+### The goal:
 
 > **Present the topic. Access everything related to it. Reuse and improve it without modifying the original.**

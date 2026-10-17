@@ -4,6 +4,8 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import Logo from '@/components/ui/Logo';
+import DevelopedByButton from '@/components/ui/DevelopedByButton';
 import styles from './page.module.css';
 
 export default function LandingPage() {
@@ -72,7 +74,7 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className={styles.nav}>
         <div className={styles.logo}>
-          <span className={styles.logoIcon}>⬡</span>
+          <Logo size={32} style={{ borderRadius: 8 }} />
           <span className={styles.logoText}>HowTo-Web</span>
         </div>
         <div className={styles.navLinks}>
@@ -116,6 +118,9 @@ export default function LandingPage() {
             The presentation platform that keeps your slides, code, notes, files,
             and resources together. Fork, share, and collaborate like developers do.
           </p>
+          <div className={`${styles.heroDevWrapper} animate-fade-in-up delay-2`}>
+            <DevelopedByButton variant="hero" />
+          </div>
           <div className={`${styles.heroCtas} animate-fade-in-up delay-2`}>
             <button
               className="btn btn-primary btn-lg"
@@ -297,12 +302,24 @@ export default function LandingPage() {
       <footer className={styles.footer}>
         <div className={styles.footerContent}>
           <div className={styles.logo}>
-            <span className={styles.logoIcon}>⬡</span>
+            <Logo size={28} style={{ borderRadius: 7 }} />
             <span className={styles.logoText}>HowTo-Web</span>
           </div>
-          <p className={styles.footerText}>
-            Built for teachers, creators, and developers who want more from their presentations.
-          </p>
+          <div className={styles.footerRight}>
+            <p className={styles.footerText}>
+              Built for teachers, creators, and developers who want more from their presentations.
+            </p>
+            <a
+              href="https://portfolio-2x8sol792-rounak8906s-projects.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.developerBtn}
+              title="Developed by Rounak Singh — Visit Portfolio"
+            >
+              <span>developed by <strong>Rounak Singh</strong></span>
+              <span className={styles.devBtnArrow}>↗</span>
+            </a>
+          </div>
         </div>
       </footer>
     </div>

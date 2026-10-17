@@ -4,15 +4,67 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { getPresentation, saveSlides, uploadResourceWithTimeout } from '@/lib/firestore';
+import { getPresentation, saveSlides } from '@/lib/firestore';
 import { saveLocalFile, getLocalFileUrl } from '@/lib/localFileStore';
-import { compressImage } from '@/lib/imageCompressor';
 import type { Presentation, Slide, SlideElement, Resource } from '@/lib/types';
-import { generateId, getResourceIcon, clamp } from '@/lib/utils';
-import ExcalidrawModal from '@/components/excalidraw/ExcalidrawModal';
-import InSlideExcalidraw from '@/components/excalidraw/InSlideExcalidraw';
-import type { ExcalidrawSavePayload } from '@/components/excalidraw/ExcalidrawWrapper';
+import { generateId, getResourceIcon, clamp, adjustColor } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import Logo from '@/components/ui/Logo';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  Eye,
+  Undo2,
+  Redo2,
+  Plus,
+  Type,
+  Square,
+  Circle,
+  ArrowRight,
+  MessageSquare,
+  Star,
+  Image as ImageIcon,
+  Table2,
+  Code2,
+  Trash2,
+  Copy,
+  ChevronUp,
+  ChevronDown,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Bold,
+  Italic,
+  UploadCloud,
+  Folder,
+  FileText,
+  ExternalLink,
+  Sun,
+  Moon,
+  GitFork,
+  X,
+  Sparkles,
+  Layers,
+  HelpCircle,
+  Camera,
+  PenTool,
+  MonitorPlay,
+  PanelLeftClose,
+  PanelLeft,
+  Palette,
+  Layout,
+  Highlighter,
+  Box,
+  StickyNote,
+  Check,
+} from 'lucide-react';
+import WhiteboardModal from '@/components/draw/WhiteboardModal';
+import SlideDrawingCanvas from '@/components/draw/SlideDrawingCanvas';
+import RealisticShape from '@/components/ui/RealisticShape';
 import styles from './editor.module.css';
 
 const SAMPLE_IMAGES = [
@@ -25,12 +77,14 @@ const SAMPLE_IMAGES = [
 ];
 
 const GRADIENT_PRESETS = [
+  { name: 'Studio White', value: '#ffffff' },
+  { name: 'Warm Pearl', value: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)' },
+  { name: 'Soft Azure', value: 'linear-gradient(135deg, #eff6ff 0%, #e0f2fe 100%)' },
+  { name: 'Clean Mint', value: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' },
+  { name: 'Sunset Cream', value: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)' },
+  { name: 'Royal Lavender', value: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)' },
+  { name: 'Clean Slate', value: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)' },
   { name: 'Midnight Obsidian', value: 'linear-gradient(135deg, #07090e 0%, #131929 100%)' },
-  { name: 'Royal Indigo', value: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)' },
-  { name: 'Electric Azure', value: 'linear-gradient(135deg, #0c192c 0%, #082f49 100%)' },
-  { name: 'Deep Emerald', value: 'linear-gradient(135deg, #022c22 0%, #064e3b 100%)' },
-  { name: 'Sunset Amethyst', value: 'linear-gradient(135deg, #2e1065 0%, #4c0519 100%)' },
-  { name: 'Clean Slate', value: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' },
 ];
 
 const DEFAULT_PRESENTATION: Presentation = {
@@ -51,7 +105,7 @@ const DEFAULT_PRESENTATION: Presentation = {
     {
       id: 's1',
       order: 0,
-      background: { type: 'color', value: '#0a0d16' },
+      background: { type: 'color', value: '#ffffff' },
       elements: [
         {
           id: 'e1',
@@ -65,7 +119,7 @@ const DEFAULT_PRESENTATION: Presentation = {
             fontSize: '3rem',
             fontWeight: '800',
             fontFamily: 'var(--font-sans)',
-            color: '#f8fafc',
+            color: '#0f172a',
             textAlign: 'center',
           },
         },
@@ -116,7 +170,7 @@ const DEFAULT_PRESENTATION: Presentation = {
     {
       id: 's2',
       order: 1,
-      background: { type: 'color', value: '#0c101b' },
+      background: { type: 'gradient', value: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)' },
       elements: [
         {
           id: 'e3',
@@ -126,7 +180,7 @@ const DEFAULT_PRESENTATION: Presentation = {
           width: 84,
           height: 16,
           content: 'Slide-Specific Context & Resources',
-          style: { fontSize: '2.2rem', fontWeight: '700', color: '#f8fafc' },
+          style: { fontSize: '2.2rem', fontWeight: '700', color: '#0f172a' },
         },
         {
           id: 'e4',
@@ -137,7 +191,7 @@ const DEFAULT_PRESENTATION: Presentation = {
           height: 52,
           content:
             '• 70% Presentation Area: Focus on high-impact visual slides\n• 30% Interactive Panel: Attach PDFs, live code sandboxes, docs, and links\n• Signature Draggable Divider: Smoothly resize between 70/30, 60/40, and 80/20\n• Comic-Style Notes: Clean, engaging speaker reminders on every slide\n• GitHub-style Fork & Pull: Collaborate without overwriting originals',
-          style: { fontSize: '1.25rem', color: '#cbd5e1', lineHeight: '1.6' },
+          style: { fontSize: '1.25rem', color: '#334155', lineHeight: '1.6' },
         },
       ],
       resources: [],
@@ -154,7 +208,7 @@ const DEFAULT_PRESENTATION: Presentation = {
     {
       id: 's3',
       order: 2,
-      background: { type: 'color', value: '#0d1322' },
+      background: { type: 'gradient', value: 'linear-gradient(135deg, #eff6ff 0%, #e0f2fe 100%)' },
       elements: [
         {
           id: 'e5',
@@ -164,7 +218,7 @@ const DEFAULT_PRESENTATION: Presentation = {
           width: 84,
           height: 16,
           content: 'Interactive Live Code Snippet',
-          style: { fontSize: '2.2rem', fontWeight: '700', color: '#f8fafc' },
+          style: { fontSize: '2.2rem', fontWeight: '700', color: '#0f172a' },
         },
         {
           id: 'e6',
@@ -200,7 +254,24 @@ export default function EditorPage() {
   // Layout & 70/30 Divider State
   const [dividerPosition, setDividerPosition] = useState(70);
   const [isDraggingDivider, setIsDraggingDivider] = useState(false);
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(100);
+
+  // PowerPoint Ribbon & Top Bar State
+  const [activeRibbonTab, setActiveRibbonTab] = useState<'home' | 'insert' | 'draw' | 'design' | 'slideshow'>('home');
+  const [showWhiteboardModal, setShowWhiteboardModal] = useState(false);
+
+  // In-Slide Vector Drawing Canvas State
+  const [isDrawingMode, setIsDrawingMode] = useState(false);
+  const [drawTool, setDrawTool] = useState<'pen' | 'highlighter' | 'marker' | 'eraser'>('pen');
+  const [drawColor, setDrawColor] = useState('#4f46e5');
+  const [drawSize, setDrawSize] = useState(3);
+
+  // Horizontal Top Slide Strip Ref
+  const slideStripRef = useRef<HTMLDivElement | null>(null);
+
+  // Realistic Shape Preset State
+  const [shapeRealisticStyle, setShapeRealisticStyle] = useState<'shaded' | 'glass' | 'glossy' | 'neumorphic' | 'metallic'>('shaded');
 
   // Active Selection & Contextual Formatting
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
@@ -221,13 +292,6 @@ export default function EditorPage() {
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [linkName, setLinkName] = useState('');
-
-  // Excalidraw Slide Component Modal & In-Slide Drawing
-  const [showExcalidrawModal, setShowExcalidrawModal] = useState(false);
-  const [editingExcalidrawElement, setEditingExcalidrawElement] = useState<SlideElement | null>(null);
-  const [isResourceWhiteboard, setIsResourceWhiteboard] = useState(false);
-  const [activeInlineExcalidrawId, setActiveInlineExcalidrawId] = useState<string | null>(null);
-  const [fullSlideExcalidrawId, setFullSlideExcalidrawId] = useState<string | null>(null);
 
   // Dragging & Resizing Element on Canvas
   const [draggingElementId, setDraggingElementId] = useState<string | null>(null);
@@ -335,6 +399,75 @@ export default function EditorPage() {
     }
   };
 
+  // Whiteboard Integration Handlers
+  const handleExportWhiteboardToSlide = (imageDataUrl: string) => {
+    if (!presentation || !currentSlide) return;
+
+    // 1. Insert image element onto the current slide
+    const newElement: SlideElement = {
+      id: generateId(),
+      type: 'image',
+      x: 20,
+      y: 20,
+      width: 60,
+      height: 55,
+      content: imageDataUrl,
+      style: {
+        borderRadius: '8px',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+      },
+    };
+
+    // 2. Also save as an image resource in the current slide's resources
+    const newResource: Resource = {
+      id: generateId(),
+      type: 'image',
+      name: `Whiteboard-${new Date().toLocaleTimeString().replace(/:/g, '-')}.png`,
+      url: imageDataUrl,
+      createdAt: Date.now(),
+      size: Math.round(imageDataUrl.length * 0.75),
+    };
+
+    const updatedElements = [...currentSlide.elements, newElement];
+    const updatedResources = [...(currentSlide.resources || []), newResource];
+
+    const newSlides = [...presentation.slides];
+    newSlides[currentSlideIndex] = {
+      ...currentSlide,
+      elements: updatedElements,
+      resources: updatedResources,
+    };
+
+    setPresentation({ ...presentation, slides: newSlides });
+    pushHistory(newSlides);
+    setSelectedElementId(newElement.id);
+    setHasChanges(true);
+  };
+
+  const handleSaveWhiteboardResource = (imageDataUrl: string) => {
+    if (!presentation || !currentSlide) return;
+
+    const newResource: Resource = {
+      id: generateId(),
+      type: 'image',
+      name: `Whiteboard-${new Date().toLocaleTimeString().replace(/:/g, '-')}.png`,
+      url: imageDataUrl,
+      createdAt: Date.now(),
+      size: Math.round(imageDataUrl.length * 0.75),
+    };
+
+    const updatedResources = [...(currentSlide.resources || []), newResource];
+    const newSlides = [...presentation.slides];
+    newSlides[currentSlideIndex] = {
+      ...currentSlide,
+      resources: updatedResources,
+    };
+
+    setPresentation({ ...presentation, slides: newSlides });
+    pushHistory(newSlides);
+    setHasChanges(true);
+  };
+
   // Slide CRUD
   const updateSlide = (updates: Partial<Slide>) => {
     if (!presentation || !currentSlide) return;
@@ -366,7 +499,7 @@ export default function EditorPage() {
             fontSize: '3rem',
             fontWeight: '800',
             fontFamily: 'var(--font-sans)',
-            color: '#f8fafc',
+            color: '#0f172a',
             textAlign: 'center',
           },
         },
@@ -382,7 +515,7 @@ export default function EditorPage() {
             fontSize: '1.4rem',
             fontWeight: '400',
             fontFamily: 'var(--font-sans)',
-            color: '#94a3b8',
+            color: '#475569',
             textAlign: 'center',
           },
         },
@@ -401,7 +534,7 @@ export default function EditorPage() {
             fontSize: '2.2rem',
             fontWeight: '700',
             fontFamily: 'var(--font-sans)',
-            color: '#f8fafc',
+            color: '#0f172a',
             textAlign: 'left',
           },
         },
@@ -417,7 +550,7 @@ export default function EditorPage() {
             fontSize: '1.25rem',
             fontWeight: '400',
             fontFamily: 'var(--font-sans)',
-            color: '#cbd5e1',
+            color: '#334155',
             textAlign: 'left',
           },
         },
@@ -432,7 +565,7 @@ export default function EditorPage() {
           width: 84,
           height: 16,
           content: 'Comparative Analysis',
-          style: { fontSize: '2.2rem', fontWeight: '700', color: '#f8fafc' },
+          style: { fontSize: '2.2rem', fontWeight: '700', color: '#0f172a' },
         },
         {
           id: generateId(),
@@ -442,7 +575,7 @@ export default function EditorPage() {
           width: 40,
           height: 55,
           content: 'Approach A:\n• Simple implementation\n• Fast delivery\n• Lower overhead',
-          style: { fontSize: '1.15rem', color: '#cbd5e1' },
+          style: { fontSize: '1.15rem', color: '#334155' },
         },
         {
           id: generateId(),
@@ -452,7 +585,7 @@ export default function EditorPage() {
           width: 40,
           height: 55,
           content: 'Approach B:\n• High scalability\n• Strict typing\n• Long-term stability',
-          style: { fontSize: '1.15rem', color: '#cbd5e1' },
+          style: { fontSize: '1.15rem', color: '#334155' },
         },
       ];
     } else if (layout === 'code') {
@@ -465,7 +598,7 @@ export default function EditorPage() {
           width: 84,
           height: 14,
           content: 'Live Code Execution',
-          style: { fontSize: '2.2rem', fontWeight: '700', color: '#f8fafc' },
+          style: { fontSize: '2.2rem', fontWeight: '700', color: '#0f172a' },
         },
         {
           id: generateId(),
@@ -483,7 +616,7 @@ export default function EditorPage() {
     const newSlide: Slide = {
       id: generateId(),
       order: presentation.slides.length,
-      background: { type: 'color', value: '#0a0d16' },
+      background: { type: 'color', value: '#ffffff' },
       elements: initialElements,
       resources: [],
       notes: [],
@@ -574,7 +707,7 @@ export default function EditorPage() {
       style: {
         fontSize,
         fontWeight,
-        color: '#f8fafc',
+        color: '#0f172a',
         fontFamily: 'var(--font-sans)',
         textAlign: 'left',
       },
@@ -585,20 +718,33 @@ export default function EditorPage() {
     setShowTextMenu(false);
   };
 
-  const addShapeElement = (shapeType: 'rect' | 'circle' | 'arrow' | 'callout' | 'star') => {
+  const addShapeElement = (
+    shapeType: 'rect' | 'circle' | 'arrow' | 'callout' | 'star' | 'cylinder' | 'cube' | 'diamond' | 'hexagon' | 'sticky',
+    stylePreset: 'shaded' | 'glass' | 'glossy' | 'neumorphic' | 'metallic' = 'shaded'
+  ) => {
     if (!currentSlide) return;
+    const defaultColor =
+      shapeType === 'sticky' ? '#fef08a' :
+      shapeType === 'star' ? '#f59e0b' :
+      shapeType === 'diamond' ? '#38bdf8' :
+      shapeType === 'cylinder' ? '#0ea5e9' :
+      shapeType === 'cube' ? '#6366f1' :
+      shapeType === 'arrow' ? '#10b981' :
+      '#4f46e5';
+
     const newEl: SlideElement = {
       id: generateId(),
       type: 'shape',
       shapeType,
+      shapeRealisticStyle: stylePreset,
       x: 35,
-      y: 35,
-      width: 30,
-      height: 25,
+      y: 30,
+      width: shapeType === 'arrow' ? 32 : (shapeType === 'circle' || shapeType === 'cylinder' || shapeType === 'cube' || shapeType === 'star') ? 25 : 28,
+      height: shapeType === 'arrow' ? 18 : 28,
       content: '',
       style: {
-        backgroundColor: '#1e293b',
-        border: '1.5px solid #6366f1',
+        backgroundColor: defaultColor,
+        color: shapeType === 'sticky' ? '#0f172a' : '#ffffff',
       },
     };
     updateSlide({ elements: [...currentSlide.elements, newEl] });
@@ -644,56 +790,6 @@ export default function EditorPage() {
     };
     updateSlide({ elements: [...currentSlide.elements, newEl] });
     setSelectedElementId(newEl.id);
-  };
-
-  const handleSaveExcalidraw = (payload: ExcalidrawSavePayload) => {
-    if (!currentSlide) return;
-
-    if (isResourceWhiteboard) {
-      const newRes: Resource = {
-        id: generateId(),
-        type: 'excalidraw',
-        name: payload.name.endsWith('.excalidraw') ? payload.name : `${payload.name}.excalidraw`,
-        content: payload.svgString,
-        excalidrawElements: [...payload.elements],
-        createdAt: Date.now(),
-        size: Math.round(payload.svgString.length),
-      };
-      updateSlide({ resources: [...currentSlide.resources, newRes] });
-      setIsResourceWhiteboard(false);
-      toast.success('Diagram saved to slide resources!');
-      return;
-    }
-
-    if (editingExcalidrawElement) {
-      updateElement(editingExcalidrawElement.id, {
-        content: payload.svgString,
-        excalidrawElements: [...payload.elements],
-        excalidrawAppState: payload.appState,
-        excalidrawFiles: payload.files,
-        diagramName: payload.name,
-      });
-      setEditingExcalidrawElement(null);
-      toast.success('Excalidraw component updated!');
-    } else {
-      const newEl: SlideElement = {
-        id: generateId(),
-        type: 'excalidraw',
-        x: 12,
-        y: 18,
-        width: 76,
-        height: 58,
-        content: payload.svgString,
-        style: {},
-        excalidrawElements: [...payload.elements],
-        excalidrawAppState: payload.appState,
-        excalidrawFiles: payload.files,
-        diagramName: payload.name,
-      };
-      updateSlide({ elements: [...currentSlide.elements, newEl] });
-      setSelectedElementId(newEl.id);
-      toast.success('Diagram saved as slide component!');
-    }
   };
 
   const updateElement = (elementId: string, updates: Partial<SlideElement>) => {
@@ -1036,8 +1132,8 @@ export default function EditorPage() {
   if (!presentation) {
     return (
       <div className={styles.loadingPage}>
-        <div className={styles.loadingSpinner}>⬡</div>
-        <p style={{ marginTop: 12, fontSize: 13, color: 'var(--text-secondary)' }}>
+        <div className={styles.loadingSpinner} />
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
           Loading Presentation Studio...
         </p>
       </div>
@@ -1050,10 +1146,11 @@ export default function EditorPage() {
       <header className={styles.topBar}>
         <div className={styles.topBarLeft}>
           <button className={styles.backBtn} onClick={() => router.push('/dashboard')}>
-            <span>←</span> Workspace
+            <ChevronLeft size={16} />
+            <span>Workspace</span>
           </button>
 
-          <img src="/favicon.png" alt="HowTo-Web" className={styles.brandLogo} />
+          <Logo size={26} style={{ borderRadius: 7 }} />
 
           {/* Editable Presentation Title */}
           <div className={styles.titleCapsule}>
@@ -1076,15 +1173,33 @@ export default function EditorPage() {
                 isSaving ? styles.statusSaving : hasChanges ? styles.statusUnsaved : styles.statusSaved
               }`}
             />
-            <span>{isSaving ? 'Saving...' : hasChanges ? 'Unsaved changes' : 'Synced to Cloud'}</span>
+            <span>{isSaving ? 'Saving...' : hasChanges ? 'Unsaved' : 'Saved to Cloud'}</span>
           </div>
 
-          {/* Preset Buttons (70/30, 60/40, 80/20, Reset) */}
+          {/* Fork Attribution Pill */}
+          {presentation.forkOf && (
+            <div className={styles.forkPill} title={`Forked from "${presentation.forkOf.originalTitle}"`}>
+              <GitFork size={12} />
+              <span>
+                Forked from{' '}
+                <a
+                  href={`/view/${presentation.forkOf.originalId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={styles.forkLink}
+                >
+                  {presentation.forkOf.originalOwnerUsername || presentation.forkOf.originalOwnerName}/{presentation.forkOf.originalTitle}
+                </a>
+              </span>
+            </div>
+          )}
+
+          {/* Split View Segmented Controller */}
           <div className={styles.presetGroup}>
             <button
               className={`${styles.presetBtn} ${dividerPosition === 70 ? styles.presetBtnActive : ''}`}
               onClick={() => setDividerPosition(70)}
-              title="Default 70% Presentation / 30% Resources"
+              title="70% Presentation / 30% Resources"
             >
               70/30
             </button>
@@ -1103,11 +1218,11 @@ export default function EditorPage() {
               80/20
             </button>
             <button
-              className={styles.presetBtn}
-              onClick={() => setDividerPosition(70)}
-              title="Reset to 70/30 split"
+              className={`${styles.presetBtn} ${dividerPosition === 100 ? styles.presetBtnActive : ''}`}
+              onClick={() => setDividerPosition(dividerPosition === 100 ? 70 : 100)}
+              title="Focus Canvas (Hide Resources)"
             >
-              Reset
+              {dividerPosition === 100 ? 'Restore' : '100%'}
             </button>
           </div>
         </div>
@@ -1115,34 +1230,31 @@ export default function EditorPage() {
         <div className={styles.topBarRight}>
           {/* Undo / Redo */}
           <button
-            className={styles.actionBtn}
+            className={styles.iconActionBtn}
             onClick={handleUndo}
             disabled={historyIndex <= 0}
             title="Undo (Ctrl+Z)"
-            style={{ opacity: historyIndex <= 0 ? 0.4 : 1 }}
           >
-            ↶
+            <Undo2 size={16} />
           </button>
           <button
-            className={styles.actionBtn}
+            className={styles.iconActionBtn}
             onClick={handleRedo}
             disabled={historyIndex >= history.length - 1}
             title="Redo (Ctrl+Y)"
-            style={{ opacity: historyIndex >= history.length - 1 ? 0.4 : 1 }}
           >
-            ↷
+            <Redo2 size={16} />
           </button>
 
           {/* Theme Toggle */}
           <button
-            className="theme-toggle"
+            className={styles.iconActionBtn}
             onClick={toggleTheme}
             aria-label="Toggle theme"
             type="button"
+            title="Toggle theme"
           >
-            <span className="theme-toggle-icon">
-              {theme === 'dark' ? '🌙' : '☀️'}
-            </span>
+            {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
           </button>
 
           {/* View Presentation */}
@@ -1151,205 +1263,632 @@ export default function EditorPage() {
             onClick={() => router.push(`/view/${presentation.id}`)}
             title="Open Public Viewer"
           >
-            <span>👁</span> View
+            <Eye size={15} />
+            <span>View</span>
           </button>
 
           {/* Present Mode */}
           <button
             className={`${styles.actionBtn} ${styles.btnPrimary}`}
             onClick={() => router.push(`/present/${presentation.id}`)}
-            title="Enter Fullscreen Presentation Mode (F5)"
+            title="Fullscreen Presentation Mode (F5)"
           >
-            <span>▶</span> Present
+            <Play size={15} fill="currentColor" />
+            <span>Present</span>
           </button>
         </div>
       </header>
 
-      {/* ─── 2. QUICK ELEMENT INSERTION & CONTEXTUAL FORMATTING SHELF ─── */}
+      {/* ─── 2. POWERPOINT RIBBON NAVIGATION TABS ─── */}
+      <nav className={styles.ribbonNavTabs} aria-label="Presentation Ribbon">
+        <button
+          className={`${styles.ribbonTabBtn} ${activeRibbonTab === 'home' ? styles.ribbonTabBtnActive : ''}`}
+          onClick={() => setActiveRibbonTab('home')}
+        >
+          <Layout size={14} />
+          <span>Home</span>
+        </button>
+        <button
+          className={`${styles.ribbonTabBtn} ${activeRibbonTab === 'insert' ? styles.ribbonTabBtnActive : ''}`}
+          onClick={() => setActiveRibbonTab('insert')}
+        >
+          <Plus size={14} />
+          <span>Insert</span>
+        </button>
+        <button
+          className={`${styles.ribbonTabBtn} ${activeRibbonTab === 'draw' ? styles.ribbonTabBtnActive : ''}`}
+          onClick={() => setActiveRibbonTab('draw')}
+        >
+          <PenTool size={14} />
+          <span>Draw / Whiteboard</span>
+        </button>
+        <button
+          className={`${styles.ribbonTabBtn} ${activeRibbonTab === 'design' ? styles.ribbonTabBtnActive : ''}`}
+          onClick={() => setActiveRibbonTab('design')}
+        >
+          <Palette size={14} />
+          <span>Design</span>
+        </button>
+        <button
+          className={`${styles.ribbonTabBtn} ${activeRibbonTab === 'slideshow' ? styles.ribbonTabBtnActive : ''}`}
+          onClick={() => setActiveRibbonTab('slideshow')}
+        >
+          <MonitorPlay size={14} />
+          <span>Slide Show</span>
+        </button>
+
+        <div className={styles.ribbonDivider} />
+
+        {/* Quick Launch Whiteboard Studio */}
+        <button
+          className={styles.whiteboardLaunchBtn}
+          onClick={() => setShowWhiteboardModal(true)}
+          title="Open Whiteboard Studio (Draw and Export to Slide)"
+        >
+          <Sparkles size={14} />
+          <span>🎨 Whiteboard Studio</span>
+        </button>
+      </nav>
+
+      {/* ─── RIBBON ACTIVE TAB TOOL SHELF & CONTEXTUAL FORMATTING ─── */}
       <div className={styles.toolShelf}>
         <div className={styles.toolGroup}>
-          {/* Add Text Dropdown */}
-          <div className={styles.dropdownContainer}>
-            <button
-              className={styles.toolPill}
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowTextMenu(!showTextMenu);
-                setShowShapesMenu(false);
-                setShowAddSlideMenu(false);
-              }}
-              title="Insert Text"
-            >
-              <span>T</span>
-              <span>+ Text ▾</span>
-            </button>
-            {showTextMenu && (
-              <div className={styles.dropdownMenu} onClick={(e) => e.stopPropagation()}>
+          {/* HOME TAB TOOLS */}
+          {activeRibbonTab === 'home' && (
+            <>
+              {/* Add New Slide */}
+              <div className={styles.dropdownContainer}>
                 <button
-                  className={styles.dropdownItem}
-                  onClick={() => {
-                    addTextElement('heading');
+                  className={`${styles.toolPill} ${styles.btnPrimary}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowAddSlideMenu(!showAddSlideMenu);
                     setShowTextMenu(false);
+                    setShowShapesMenu(false);
                   }}
+                  title="Add New Slide"
+                  style={{ background: 'var(--accent-primary)', color: '#fff', fontWeight: 600 }}
                 >
-                  <span style={{ fontWeight: 700 }}>H1</span> Title Heading
+                  <Plus size={14} />
+                  <span>New Slide ▾</span>
+                </button>
+                {showAddSlideMenu && (
+                  <div className={styles.dropdownMenu} onClick={(e) => e.stopPropagation()}>
+                    <button
+                      className={styles.dropdownItem}
+                      onClick={() => {
+                        addSlide('titleAndContent');
+                        setShowAddSlideMenu(false);
+                      }}
+                    >
+                      <FileText size={15} className={styles.dropdownItemIcon} />
+                      <span>Title & Content</span>
+                    </button>
+                    <button
+                      className={styles.dropdownItem}
+                      onClick={() => {
+                        addSlide('title');
+                        setShowAddSlideMenu(false);
+                      }}
+                    >
+                      <Type size={15} className={styles.dropdownItemIcon} />
+                      <span>Title Slide</span>
+                    </button>
+                    <button
+                      className={styles.dropdownItem}
+                      onClick={() => {
+                        addSlide('twoContent');
+                        setShowAddSlideMenu(false);
+                      }}
+                    >
+                      <Table2 size={15} className={styles.dropdownItemIcon} />
+                      <span>Two Columns</span>
+                    </button>
+                    <button
+                      className={styles.dropdownItem}
+                      onClick={() => {
+                        addSlide('code');
+                        setShowAddSlideMenu(false);
+                      }}
+                    >
+                      <Code2 size={15} className={styles.dropdownItemIcon} />
+                      <span>Code Focus</span>
+                    </button>
+                    <button
+                      className={styles.dropdownItem}
+                      onClick={() => {
+                        addSlide('blank');
+                        setShowAddSlideMenu(false);
+                      }}
+                    >
+                      <Square size={15} className={styles.dropdownItemIcon} />
+                      <span>Blank Slide</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Add Text Dropdown */}
+              <div className={styles.dropdownContainer}>
+                <button
+                  className={styles.toolPill}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowTextMenu(!showTextMenu);
+                    setShowShapesMenu(false);
+                    setShowAddSlideMenu(false);
+                  }}
+                  title="Insert Text"
+                >
+                  <Type size={15} />
+                  <span>Text ▾</span>
+                </button>
+                {showTextMenu && (
+                  <div className={styles.dropdownMenu} onClick={(e) => e.stopPropagation()}>
+                    <button
+                      className={styles.dropdownItem}
+                      onClick={() => {
+                        addTextElement('heading');
+                        setShowTextMenu(false);
+                      }}
+                    >
+                      <span className={styles.dropdownItemIcon} style={{ fontWeight: 800 }}>H1</span>
+                      <span>Title Heading</span>
+                    </button>
+                    <button
+                      className={styles.dropdownItem}
+                      onClick={() => {
+                        addTextElement('subheading');
+                        setShowTextMenu(false);
+                      }}
+                    >
+                      <span className={styles.dropdownItemIcon} style={{ fontWeight: 600 }}>H2</span>
+                      <span>Section Subheading</span>
+                    </button>
+                    <button
+                      className={styles.dropdownItem}
+                      onClick={() => {
+                        addTextElement('body');
+                        setShowTextMenu(false);
+                      }}
+                    >
+                      <span className={styles.dropdownItemIcon}>¶</span>
+                      <span>Paragraph Text</span>
+                    </button>
+                    <button
+                      className={styles.dropdownItem}
+                      onClick={() => {
+                        addTextElement('bullets');
+                        setShowTextMenu(false);
+                      }}
+                    >
+                      <span className={styles.dropdownItemIcon}>•</span>
+                      <span>Bullet Points</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Add Shapes Dropdown */}
+              <div className={styles.dropdownContainer}>
+                <button
+                  className={styles.toolPill}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowShapesMenu(!showShapesMenu);
+                    setShowTextMenu(false);
+                    setShowAddSlideMenu(false);
+                  }}
+                  title="Insert Shape"
+                >
+                  <Square size={15} />
+                  <span>Shape ▾</span>
+                </button>
+                {showShapesMenu && (
+                  <div className={styles.dropdownMenu} style={{ minWidth: 260, padding: 10 }} onClick={(e) => e.stopPropagation()}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 6, letterSpacing: '0.05em' }}>
+                      Realistic 3D & Vector Shapes
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4 }}>
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={() => { addShapeElement('cube', shapeRealisticStyle); setShowShapesMenu(false); }}
+                      >
+                        <span style={{ fontSize: 14 }}>🧊</span>
+                        <span>3D Cube</span>
+                      </button>
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={() => { addShapeElement('cylinder', shapeRealisticStyle); setShowShapesMenu(false); }}
+                      >
+                        <span style={{ fontSize: 14 }}>🛢️</span>
+                        <span>3D Cylinder</span>
+                      </button>
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={() => { addShapeElement('circle', shapeRealisticStyle); setShowShapesMenu(false); }}
+                      >
+                        <span style={{ fontSize: 14 }}>🔮</span>
+                        <span>3D Sphere</span>
+                      </button>
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={() => { addShapeElement('rect', shapeRealisticStyle); setShowShapesMenu(false); }}
+                      >
+                        <span style={{ fontSize: 14 }}>💳</span>
+                        <span>Glass Card</span>
+                      </button>
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={() => { addShapeElement('arrow', shapeRealisticStyle); setShowShapesMenu(false); }}
+                      >
+                        <span style={{ fontSize: 14 }}>➡️</span>
+                        <span>3D Arrow</span>
+                      </button>
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={() => { addShapeElement('callout', shapeRealisticStyle); setShowShapesMenu(false); }}
+                      >
+                        <span style={{ fontSize: 14 }}>💬</span>
+                        <span>Callout Bubble</span>
+                      </button>
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={() => { addShapeElement('star', shapeRealisticStyle); setShowShapesMenu(false); }}
+                      >
+                        <span style={{ fontSize: 14 }}>⭐</span>
+                        <span>Faceted Star</span>
+                      </button>
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={() => { addShapeElement('diamond', shapeRealisticStyle); setShowShapesMenu(false); }}
+                      >
+                        <span style={{ fontSize: 14 }}>💎</span>
+                        <span>Diamond Prism</span>
+                      </button>
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={() => { addShapeElement('hexagon', shapeRealisticStyle); setShowShapesMenu(false); }}
+                      >
+                        <span style={{ fontSize: 14 }}>⬡</span>
+                        <span>Hexagon Badge</span>
+                      </button>
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={() => { addShapeElement('sticky', shapeRealisticStyle); setShowShapesMenu(false); }}
+                      >
+                        <span style={{ fontSize: 14 }}>📝</span>
+                        <span>3D Sticky Note</span>
+                      </button>
+                    </div>
+
+                    <div style={{ margin: '8px 0 6px', borderTop: '1px solid #e2e8f0', paddingTop: 6 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 5 }}>
+                        Material Finish:
+                      </div>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {(['shaded', 'glass', 'glossy', 'metallic', 'neumorphic'] as const).map((st) => (
+                          <button
+                            key={st}
+                            className={`${styles.formatBtn} ${shapeRealisticStyle === st ? styles.formatBtnActive : ''}`}
+                            style={{ fontSize: 10, padding: '3px 6px', textTransform: 'capitalize' }}
+                            onClick={() => setShapeRealisticStyle(st)}
+                          >
+                            {st}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Add Image */}
+              <button
+                className={styles.toolPill}
+                onClick={() => setShowImageModal(true)}
+                title="Insert Image"
+              >
+                <ImageIcon size={15} />
+                <span>Image</span>
+              </button>
+
+              {/* Add Table */}
+              <button
+                className={styles.toolPill}
+                onClick={addTableElement}
+                title="Insert Structured Table"
+              >
+                <Table2 size={15} />
+                <span>Table</span>
+              </button>
+
+              {/* Add Code Block */}
+              <button
+                className={styles.toolPill}
+                onClick={addCodeElement}
+                title="Insert Code Snippet"
+              >
+                <Code2 size={15} />
+                <span>Code</span>
+              </button>
+            </>
+          )}
+
+          {/* INSERT TAB TOOLS */}
+          {activeRibbonTab === 'insert' && (
+            <>
+              <button
+                className={styles.toolPill}
+                onClick={() => addTextElement('body')}
+                title="Insert Textbox"
+              >
+                <Type size={15} />
+                <span>Textbox</span>
+              </button>
+              <button
+                className={styles.toolPill}
+                onClick={() => setShowImageModal(true)}
+                title="Insert Picture"
+              >
+                <ImageIcon size={15} />
+                <span>Picture</span>
+              </button>
+              <button
+                className={styles.toolPill}
+                onClick={addTableElement}
+                title="Insert Grid Table"
+              >
+                <Table2 size={15} />
+                <span>Table</span>
+              </button>
+              <button
+                className={styles.toolPill}
+                onClick={() => addShapeElement('rect')}
+                title="Insert Rectangle"
+              >
+                <Square size={15} />
+                <span>Rectangle</span>
+              </button>
+              <button
+                className={styles.toolPill}
+                onClick={() => addShapeElement('circle')}
+                title="Insert Circle"
+              >
+                <Circle size={15} />
+                <span>Circle</span>
+              </button>
+              <button
+                className={styles.toolPill}
+                onClick={() => addShapeElement('arrow')}
+                title="Insert Arrow"
+              >
+                <ArrowRight size={15} />
+                <span>Arrow</span>
+              </button>
+              <button
+                className={styles.toolPill}
+                onClick={addCodeElement}
+                title="Insert Live Code Sandbox"
+              >
+                <Code2 size={15} />
+                <span>Code Block</span>
+              </button>
+              <button
+                className={styles.toolPill}
+                onClick={() => fileInputRef.current?.click()}
+                title="Attach Document or Resource File"
+              >
+                <UploadCloud size={15} />
+                <span>Attach File</span>
+              </button>
+              <button
+                className={styles.toolPill}
+                onClick={() => setShowLinkModal(true)}
+                title="Attach Web Link"
+              >
+                <ExternalLink size={15} />
+                <span>Link</span>
+              </button>
+            </>
+          )}
+
+          {/* DRAW / VECTOR DRAWING TOOLS */}
+          {activeRibbonTab === 'draw' && (
+            <>
+              <button
+                className={`${styles.toolPill} ${isDrawingMode ? styles.toolPillActive : ''}`}
+                onClick={() => setIsDrawingMode(!isDrawingMode)}
+                title="Toggle Vector Drawing Mode on Slide"
+                style={{
+                  background: isDrawingMode ? '#eff6ff' : undefined,
+                  borderColor: isDrawingMode ? '#6366f1' : undefined,
+                  color: isDrawingMode ? '#4f46e5' : undefined,
+                  fontWeight: 700,
+                }}
+              >
+                <PenTool size={14} />
+                <span>{isDrawingMode ? 'Drawing Active (Click to Exit)' : 'Draw on Slide'}</span>
+              </button>
+
+              <div className={styles.dividerSep} />
+
+              <div className={styles.drawToolGroup}>
+                <button
+                  className={`${styles.drawToolBtn} ${drawTool === 'pen' ? styles.drawToolBtnActive : ''}`}
+                  onClick={() => { setDrawTool('pen'); setIsDrawingMode(true); }}
+                  title="Smooth Pen"
+                >
+                  <span>✏️ Pen</span>
                 </button>
                 <button
-                  className={styles.dropdownItem}
-                  onClick={() => {
-                    addTextElement('subheading');
-                    setShowTextMenu(false);
-                  }}
+                  className={`${styles.drawToolBtn} ${drawTool === 'highlighter' ? styles.drawToolBtnActive : ''}`}
+                  onClick={() => { setDrawTool('highlighter'); setIsDrawingMode(true); }}
+                  title="Highlighter (Semi-transparent)"
                 >
-                  <span style={{ fontWeight: 600 }}>H2</span> Section Subheading
+                  <span>🖍️ Highlighter</span>
                 </button>
                 <button
-                  className={styles.dropdownItem}
-                  onClick={() => {
-                    addTextElement('body');
-                    setShowTextMenu(false);
-                  }}
+                  className={`${styles.drawToolBtn} ${drawTool === 'marker' ? styles.drawToolBtnActive : ''}`}
+                  onClick={() => { setDrawTool('marker'); setIsDrawingMode(true); }}
+                  title="Bold Marker"
                 >
-                  <span>¶</span> Paragraph Text
+                  <span>🖌️ Marker</span>
                 </button>
                 <button
-                  className={styles.dropdownItem}
-                  onClick={() => {
-                    addTextElement('bullets');
-                    setShowTextMenu(false);
-                  }}
+                  className={`${styles.drawToolBtn} ${drawTool === 'eraser' ? styles.drawToolBtnActive : ''}`}
+                  onClick={() => { setDrawTool('eraser'); setIsDrawingMode(true); }}
+                  title="Eraser"
                 >
-                  <span>•</span> Bullet Points
+                  <span>🧹 Eraser</span>
                 </button>
               </div>
-            )}
-          </div>
 
-          {/* Add Shapes Dropdown */}
-          <div className={styles.dropdownContainer}>
-            <button
-              className={styles.toolPill}
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowShapesMenu(!showShapesMenu);
-                setShowTextMenu(false);
-                setShowAddSlideMenu(false);
-              }}
-              title="Insert Shapes"
-            >
-              <span>◇</span>
-              <span>+ Shape ▾</span>
-            </button>
-            {showShapesMenu && (
-              <div className={styles.dropdownMenu} onClick={(e) => e.stopPropagation()}>
-                <button
-                  className={styles.dropdownItem}
-                  onClick={() => {
-                    addShapeElement('rect');
-                    setShowShapesMenu(false);
-                  }}
+              <div className={styles.dividerSep} />
+
+              {/* Color Swatches */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {['#0f172a', '#ef4444', '#f59e0b', '#10b981', '#0ea5e9', '#6366f1', '#ec4899'].map((c) => (
+                  <button
+                    key={c}
+                    className={`${styles.drawColorSwatch} ${drawColor === c ? styles.drawColorSwatchActive : ''}`}
+                    style={{ background: c }}
+                    onClick={() => { setDrawColor(c); setIsDrawingMode(true); }}
+                    title={`Color ${c}`}
+                  />
+                ))}
+                <div
+                  className={styles.colorPickerBtn}
+                  style={{ width: 22, height: 22, borderRadius: '50%', background: drawColor }}
+                  title="Custom Draw Color"
                 >
-                  <span>▭</span> Rectangle
-                </button>
-                <button
-                  className={styles.dropdownItem}
-                  onClick={() => {
-                    addShapeElement('circle');
-                    setShowShapesMenu(false);
-                  }}
-                >
-                  <span>◯</span> Circle
-                </button>
-                <button
-                  className={styles.dropdownItem}
-                  onClick={() => {
-                    addShapeElement('arrow');
-                    setShowShapesMenu(false);
-                  }}
-                >
-                  <span>➔</span> Arrow
-                </button>
-                <button
-                  className={styles.dropdownItem}
-                  onClick={() => {
-                    addShapeElement('callout');
-                    setShowShapesMenu(false);
-                  }}
-                >
-                  <span>💬</span> Callout Bubble
-                </button>
-                <button
-                  className={styles.dropdownItem}
-                  onClick={() => {
-                    addShapeElement('star');
-                    setShowShapesMenu(false);
-                  }}
-                >
-                  <span>★</span> Star Badge
-                </button>
+                  <input
+                    type="color"
+                    className={styles.hiddenColorInput}
+                    value={drawColor}
+                    onChange={(e) => { setDrawColor(e.target.value); setIsDrawingMode(true); }}
+                  />
+                </div>
               </div>
-            )}
-          </div>
 
-          {/* Add Image */}
-          <button
-            className={styles.toolPill}
-            onClick={() => setShowImageModal(true)}
-            title="Add Image"
-          >
-            <span>🖼</span>
-            <span>Image</span>
-          </button>
+              <div className={styles.dividerSep} />
 
-          {/* Add Table */}
-          <button
-            className={styles.toolPill}
-            onClick={addTableElement}
-            title="Insert Structured Table"
-          >
-            <span>⊞</span>
-            <span>Table</span>
-          </button>
+              {/* Stroke Size */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                {[
+                  { label: 'Fine', size: 2 },
+                  { label: 'Med', size: 5 },
+                  { label: 'Bold', size: 10 },
+                ].map((s) => (
+                  <button
+                    key={s.label}
+                    className={`${styles.formatBtn} ${drawSize === s.size ? styles.formatBtnActive : ''}`}
+                    onClick={() => { setDrawSize(s.size); setIsDrawingMode(true); }}
+                    title={`${s.label} Stroke (${s.size}px)`}
+                    style={{ fontSize: 11, padding: '3px 7px' }}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
 
-          {/* Add Code Block */}
-          <button
-            className={styles.toolPill}
-            onClick={addCodeElement}
-            title="Insert Code Snippet"
-          >
-            <span>&lt;/&gt;</span>
-            <span>Code</span>
-          </button>
+              <div className={styles.dividerSep} />
 
-          {/* Add Excalidraw Component directly on slide */}
-          <button
-            className={`${styles.toolPill} ${styles.excalidrawPill}`}
-            onClick={() => {
-              if (!currentSlide) return;
-              const newEl: SlideElement = {
-                id: generateId(),
-                type: 'excalidraw',
-                x: 10,
-                y: 15,
-                width: 80,
-                height: 68,
-                content: '',
-                style: {},
-                diagramName: 'Hand-drawn Diagram',
-                excalidrawElements: [],
-                excalidrawAppState: { theme: 'dark' },
-                excalidrawFiles: {},
-              };
-              updateSlide({ elements: [...currentSlide.elements, newEl] });
-              setSelectedElementId(newEl.id);
-              setActiveInlineExcalidrawId(newEl.id);
-              toast.success('Drawing canvas active on slide!');
-            }}
-            title="Draw hand-drawn flowchart or diagram directly on this slide"
-          >
-            <span>✏️</span>
-            <span>+ Diagram</span>
-          </button>
+              <button
+                className={styles.whiteboardLaunchBtn}
+                onClick={() => setShowWhiteboardModal(true)}
+                title="Launch Whiteboard Studio"
+              >
+                <Sparkles size={14} />
+                <span>Whiteboard Studio</span>
+              </button>
+            </>
+          )}
+
+          {/* DESIGN TAB TOOLS */}
+          {activeRibbonTab === 'design' && (
+            <>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, marginRight: 4 }}>
+                Slide Background:
+              </span>
+              {GRADIENT_PRESETS.slice(0, 4).map((p) => (
+                <button
+                  key={p.name}
+                  className={styles.toolPill}
+                  style={{
+                    border: currentSlide?.background?.value === p.value ? '2px solid #818cf8' : undefined,
+                    padding: '4px 10px',
+                    fontSize: 11.5,
+                  }}
+                  onClick={() => updateSlide({ background: { type: 'gradient', value: p.value } })}
+                  title={p.name}
+                >
+                  <span
+                    style={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: 3,
+                      background: p.value,
+                      display: 'inline-block',
+                      marginRight: 4,
+                    }}
+                  />
+                  <span>{p.name}</span>
+                </button>
+              ))}
+              <div
+                className={styles.colorPickerBtn}
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 6,
+                  background: currentSlide?.background?.value || '#0a0d16',
+                }}
+                title="Choose Custom Slide Background Color"
+              >
+                <input
+                  type="color"
+                  className={styles.hiddenColorInput}
+                  value={currentSlide?.background?.value?.startsWith('#') ? currentSlide.background.value : '#0a0d16'}
+                  onChange={(e) => updateSlide({ background: { type: 'color', value: e.target.value } })}
+                />
+              </div>
+            </>
+          )}
+
+          {/* SLIDESHOW TAB TOOLS */}
+          {activeRibbonTab === 'slideshow' && (
+            <>
+              <button
+                className={`${styles.toolPill} ${styles.btnPrimary}`}
+                onClick={() => router.push(`/present/${presentation?.id}`)}
+                title="Play Presentation From Beginning"
+                style={{ background: 'var(--accent-primary)', color: '#fff' }}
+              >
+                <Play size={14} fill="currentColor" />
+                <span>From Beginning (F5)</span>
+              </button>
+              <button
+                className={styles.toolPill}
+                onClick={() => router.push(`/present/${presentation?.id}?slide=${currentSlideIndex}`)}
+                title="Play From Current Slide"
+              >
+                <MonitorPlay size={14} />
+                <span>From Current Slide</span>
+              </button>
+              <button
+                className={styles.toolPill}
+                onClick={() => {
+                  setActiveResourceTab('notes');
+                  setIsRightPanelCollapsed(false);
+                }}
+                title="View Speaker Talking Notes"
+              >
+                <MessageSquare size={14} />
+                <span>Presenter Notes</span>
+              </button>
+            </>
+          )}
         </div>
 
         {/* Contextual Format Bar when element is selected */}
@@ -1384,8 +1923,8 @@ export default function EditorPage() {
                 >
                   <option value="1rem">Small (16px)</option>
                   <option value="1.25rem">Body (20px)</option>
-                  <option value="1.75rem">Heading 2 (28px)</option>
-                  <option value="2.5rem">Heading 1 (40px)</option>
+                  <option value="1.75rem">H2 (28px)</option>
+                  <option value="2.5rem">H1 (40px)</option>
                   <option value="3.5rem">Display (56px)</option>
                 </select>
 
@@ -1405,7 +1944,7 @@ export default function EditorPage() {
                   }
                   title="Bold"
                 >
-                  B
+                  <Bold size={14} />
                 </button>
 
                 <button
@@ -1422,7 +1961,50 @@ export default function EditorPage() {
                   }
                   title="Italic"
                 >
-                  I
+                  <Italic size={14} />
+                </button>
+
+                {/* Text Alignment */}
+                <button
+                  className={`${styles.formatBtn} ${
+                    selectedElement.style?.textAlign === 'left' || !selectedElement.style?.textAlign ? styles.formatBtnActive : ''
+                  }`}
+                  onClick={() =>
+                    updateElement(selectedElement.id, {
+                      style: { ...selectedElement.style, textAlign: 'left' },
+                    })
+                  }
+                  title="Align Left"
+                >
+                  <AlignLeft size={14} />
+                </button>
+
+                <button
+                  className={`${styles.formatBtn} ${
+                    selectedElement.style?.textAlign === 'center' ? styles.formatBtnActive : ''
+                  }`}
+                  onClick={() =>
+                    updateElement(selectedElement.id, {
+                      style: { ...selectedElement.style, textAlign: 'center' },
+                    })
+                  }
+                  title="Align Center"
+                >
+                  <AlignCenter size={14} />
+                </button>
+
+                <button
+                  className={`${styles.formatBtn} ${
+                    selectedElement.style?.textAlign === 'right' ? styles.formatBtnActive : ''
+                  }`}
+                  onClick={() =>
+                    updateElement(selectedElement.id, {
+                      style: { ...selectedElement.style, textAlign: 'right' },
+                    })
+                  }
+                  title="Align Right"
+                >
+                  <AlignRight size={14} />
                 </button>
 
                 <div className={styles.colorPickerBtn} style={{ background: selectedElement.style?.color || '#f8fafc' }}>
@@ -1460,44 +2042,29 @@ export default function EditorPage() {
               </div>
             )}
 
-            {selectedElement.type === 'excalidraw' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button
-                  className={`${styles.formatBtn} ${styles.formatBtnPrimary}`}
-                  onClick={() => {
-                    setActiveInlineExcalidrawId(selectedElement.id);
-                  }}
-                  title="Draw or edit diagram directly on this slide"
-                >
-                  <span>✏️</span>
-                  <span>{activeInlineExcalidrawId === selectedElement.id ? 'Active on Slide' : '✏️ Draw on Slide'}</span>
-                </button>
-                <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500, paddingRight: 6 }}>
-                  {selectedElement.diagramName || 'Hand-drawn Diagram'}
-                </span>
-              </div>
-            )}
+            <div className={styles.dividerSep} />
 
+            {/* Layer Ordering */}
             <button
               className={styles.formatBtn}
               onClick={() => bringToFront(selectedElement.id)}
               title="Bring to Front"
             >
-              ▲
+              <ChevronUp size={15} />
             </button>
             <button
               className={styles.formatBtn}
               onClick={() => sendToBack(selectedElement.id)}
               title="Send to Back"
             >
-              ▼
+              <ChevronDown size={15} />
             </button>
             <button
               className={styles.formatBtn}
               onClick={() => duplicateElement(selectedElement.id)}
               title="Duplicate (Ctrl+D)"
             >
-              ❐
+              <Copy size={14} />
             </button>
             <button
               className={styles.formatBtn}
@@ -1505,175 +2072,225 @@ export default function EditorPage() {
               title="Delete (Del)"
               style={{ color: 'var(--accent-rose)' }}
             >
-              ✕
+              <Trash2 size={14} />
             </button>
           </div>
         )}
       </div>
 
-      {/* ─── 3. MAIN WORKSPACE: THUMBNAILS + 70% PRESENTATION CANVAS + DIAGONAL DIVIDER + 30% RESOURCES ─── */}
-      <div className={styles.workspaceStage} ref={containerRef}>
-        {/* Left Slide Deck Sidebar (~210px) */}
-        <aside className={styles.slideDeck}>
-          <div className={styles.slideDeckHeader}>
-            <span className={styles.slideDeckTitle}>Slides ({presentation.slides.length})</span>
-            <div className={styles.dropdownContainer}>
-              <button
-                className={styles.newSlideBtn}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowAddSlideMenu(!showAddSlideMenu);
-                  setShowTextMenu(false);
-                  setShowShapesMenu(false);
-                }}
-              >
-                + New
-              </button>
-              {showAddSlideMenu && (
-                <div className={`${styles.dropdownMenu} ${styles.dropdownMenuRight}`} onClick={(e) => e.stopPropagation()}>
-                  <button
-                    className={styles.dropdownItem}
-                    onClick={() => {
-                      addSlide('titleAndContent');
-                      setShowAddSlideMenu(false);
-                    }}
-                  >
-                    <span>📑</span> Title & Content
-                  </button>
-                  <button
-                    className={styles.dropdownItem}
-                    onClick={() => {
-                      addSlide('title');
-                      setShowAddSlideMenu(false);
-                    }}
-                  >
-                    <span>📰</span> Title Slide
-                  </button>
-                  <button
-                    className={styles.dropdownItem}
-                    onClick={() => {
-                      addSlide('twoContent');
-                      setShowAddSlideMenu(false);
-                    }}
-                  >
-                    <span>▥</span> Two Columns
-                  </button>
-                  <button
-                    className={styles.dropdownItem}
-                    onClick={() => {
-                      addSlide('code');
-                      setShowAddSlideMenu(false);
-                    }}
-                  >
-                    <span>&lt;/&gt;</span> Code Focus
-                  </button>
-                  <button
-                    className={styles.dropdownItem}
-                    onClick={() => {
-                      addSlide('blank');
-                      setShowAddSlideMenu(false);
-                    }}
-                  >
-                    <span>▭</span> Blank Slide
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className={styles.slideDeckList}>
-            {presentation.slides.map((slide, index) => (
-              <div
-                key={slide.id}
-                className={`${styles.slideThumbCard} ${index === currentSlideIndex ? styles.slideThumbCardActive : ''}`}
-                onClick={() => setCurrentSlideIndex(index)}
-                title={`Slide ${index + 1}`}
-              >
-                <span className={styles.slideThumbNumber}>{index + 1}</span>
-                <div
-                  className={styles.slideThumbPreview}
-                  style={{ background: slide.background?.value || '#0a0d16' }}
+      {/* ─── 2.5 TOP HORIZONTAL SLIDE DECK BAR (AT TOP BAR, NOT LEFT) ─── */}
+      <div className={styles.topSlideBar} aria-label="Slide Deck Ribbon">
+        {/* Left Controls: Add Slide + Navigation + Counter */}
+        <div className={styles.topSlideBarLeft}>
+          <div className={styles.dropdownContainer}>
+            <button
+              className={styles.newSlideTopBtn}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowAddSlideMenu(!showAddSlideMenu);
+              }}
+              title="Add New Slide"
+            >
+              <Plus size={14} />
+              <span>New Slide</span>
+            </button>
+            {showAddSlideMenu && (
+              <div className={styles.dropdownMenu} onClick={(e) => e.stopPropagation()}>
+                <button
+                  className={styles.dropdownItem}
+                  onClick={() => {
+                    addSlide('titleAndContent');
+                    setShowAddSlideMenu(false);
+                  }}
                 >
-                  {slide.elements.slice(0, 4).map((el) => (
-                    <div
-                      key={el.id}
-                      className={styles.slideThumbMiniElement}
-                      style={{
-                        left: `${el.x}%`,
-                        top: `${el.y}%`,
-                        width: `${el.width}%`,
-                        height: `${el.height}%`,
-                        background: el.type === 'text' ? 'rgba(255,255,255,0.4)' : '#6366f1',
-                      }}
-                    />
-                  ))}
-                </div>
-
-                <div className={styles.slideThumbControls}>
-                  {index > 0 && (
-                    <button
-                      className={styles.thumbControlBtn}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        moveSlide(index, 'up');
-                      }}
-                      title="Move Up"
-                    >
-                      ▲
-                    </button>
-                  )}
-                  {index < presentation.slides.length - 1 && (
-                    <button
-                      className={styles.thumbControlBtn}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        moveSlide(index, 'down');
-                      }}
-                      title="Move Down"
-                    >
-                      ▼
-                    </button>
-                  )}
-                  <button
-                    className={styles.thumbControlBtn}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      duplicateSlide(index);
-                    }}
-                    title="Duplicate"
-                  >
-                    ❐
-                  </button>
-                  {presentation.slides.length > 1 && (
-                    <button
-                      className={styles.thumbControlBtn}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteSlide(index);
-                      }}
-                      title="Delete"
-                      style={{ color: '#f87171' }}
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
+                  <FileText size={14} className={styles.dropdownItemIcon} />
+                  <span>Title & Content</span>
+                </button>
+                <button
+                  className={styles.dropdownItem}
+                  onClick={() => {
+                    addSlide('title');
+                    setShowAddSlideMenu(false);
+                  }}
+                >
+                  <Type size={14} className={styles.dropdownItemIcon} />
+                  <span>Title Slide</span>
+                </button>
+                <button
+                  className={styles.dropdownItem}
+                  onClick={() => {
+                    addSlide('twoContent');
+                    setShowAddSlideMenu(false);
+                  }}
+                >
+                  <Table2 size={14} className={styles.dropdownItemIcon} />
+                  <span>Two Columns</span>
+                </button>
+                <button
+                  className={styles.dropdownItem}
+                  onClick={() => {
+                    addSlide('code');
+                    setShowAddSlideMenu(false);
+                  }}
+                >
+                  <Code2 size={14} className={styles.dropdownItemIcon} />
+                  <span>Code Focus</span>
+                </button>
+                <button
+                  className={styles.dropdownItem}
+                  onClick={() => {
+                    addSlide('blank');
+                    setShowAddSlideMenu(false);
+                  }}
+                >
+                  <Square size={14} className={styles.dropdownItemIcon} />
+                  <span>Blank Slide</span>
+                </button>
               </div>
-            ))}
+            )}
           </div>
-        </aside>
 
-        {/* ─── 4. MAIN 70% PRESENTATION AREA (slideArea) ─── */}
+          <div className={styles.slideCounterPill}>
+            <span>Slide {currentSlideIndex + 1} of {presentation.slides.length}</span>
+          </div>
+
+          <div className={styles.slideNavBtnGroup}>
+            <button
+              className={styles.slideNavBtn}
+              disabled={currentSlideIndex <= 0}
+              onClick={() => setCurrentSlideIndex((prev) => Math.max(0, prev - 1))}
+              title="Previous Slide (PageUp / Left)"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <button
+              className={styles.slideNavBtn}
+              disabled={currentSlideIndex >= presentation.slides.length - 1}
+              onClick={() => setCurrentSlideIndex((prev) => Math.min(presentation.slides.length - 1, prev + 1))}
+              title="Next Slide (PageDown / Right)"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+
+        {/* Center: Horizontal Scrolling Slide Strip */}
+        <div className={styles.topSlideStrip} ref={slideStripRef}>
+          {presentation.slides.map((slide, index) => (
+            <div
+              key={slide.id}
+              className={`${styles.topSlideCard} ${index === currentSlideIndex ? styles.topSlideCardActive : ''}`}
+              onClick={() => setCurrentSlideIndex(index)}
+              title={`Jump to Slide ${index + 1}`}
+            >
+              <span className={styles.topSlideNumberBadge}>{index + 1}</span>
+              <div
+                className={styles.topSlideThumbnail}
+                style={{ background: slide.background?.value || '#ffffff' }}
+              >
+                {slide.elements.slice(0, 4).map((el) => (
+                  <div
+                    key={el.id}
+                    className={styles.miniElement}
+                    style={{
+                      left: `${el.x}%`,
+                      top: `${el.y}%`,
+                      width: `${el.width}%`,
+                      height: `${el.height}%`,
+                      background: el.type === 'text' ? 'rgba(15, 23, 42, 0.4)' : el.type === 'shape' ? '#6366f1' : '#0ea5e9',
+                    }}
+                  />
+                ))}
+              </div>
+
+              {/* Hover actions */}
+              <div className={styles.topSlideActions} onClick={(e) => e.stopPropagation()}>
+                {index > 0 && (
+                  <button
+                    className={styles.miniSlideBtn}
+                    onClick={() => moveSlide(index, 'up')}
+                    title="Move Left"
+                  >
+                    <ChevronLeft size={11} />
+                  </button>
+                )}
+                {index < presentation.slides.length - 1 && (
+                  <button
+                    className={styles.miniSlideBtn}
+                    onClick={() => moveSlide(index, 'down')}
+                    title="Move Right"
+                  >
+                    <ChevronRight size={11} />
+                  </button>
+                )}
+                <button
+                  className={styles.miniSlideBtn}
+                  onClick={() => duplicateSlide(index)}
+                  title="Duplicate Slide"
+                >
+                  <Copy size={11} />
+                </button>
+                {presentation.slides.length > 1 && (
+                  <button
+                    className={`${styles.miniSlideBtn} ${styles.miniSlideBtnDelete}`}
+                    onClick={() => deleteSlide(index)}
+                    title="Delete Slide"
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {/* Quick Add Slide Card Button at End of Strip */}
+          <button
+            className={styles.topSlideAddQuickCard}
+            onClick={() => addSlide('titleAndContent')}
+            title="Append New Slide"
+          >
+            <Plus size={16} />
+            <span>Add Slide</span>
+          </button>
+        </div>
+
+        {/* Right Quick Actions */}
+        <div className={styles.topSlideBarRight}>
+          <button
+            className={styles.topBarToolBtn}
+            onClick={() => setShowWhiteboardModal(true)}
+            title="Whiteboard Studio"
+          >
+            <PenTool size={13} />
+            <span>Whiteboard</span>
+          </button>
+          <button
+            className={styles.topBarPresentBtn}
+            onClick={() => router.push(`/present/${presentation.id}`)}
+            title="Enter Presentation Mode"
+          >
+            <Play size={13} fill="currentColor" />
+            <span>Present</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ─── 3. MAIN WORKSPACE: 70% PRESENTATION CANVAS + DIAGONAL DIVIDER + 30% RESOURCES ─── */}
+      <div className={styles.workspaceStage} ref={containerRef}>
+        {/* ─── MAIN POWERPOINT SLIDE CANVAS AREA ─── */}
         <main
           className={styles.slideArea}
-          style={{ width: `calc(${dividerPosition}% - 14px)` }}
+          style={{
+            width: isRightPanelCollapsed ? '100%' : `calc(${dividerPosition}% - 14px)`,
+            flex: isRightPanelCollapsed ? 1 : 'none',
+          }}
           onClick={() => setSelectedElementId(null)}
         >
           <div className={styles.slideViewport}>
             <div
               className={styles.slideStage}
               style={{
-                background: currentSlide?.background?.value || '#0a0d16',
+                background: currentSlide?.background?.value || '#ffffff',
                 transform: `scale(${zoomLevel / 100})`,
               }}
               ref={slideCanvasRef}
@@ -1687,19 +2304,13 @@ export default function EditorPage() {
                   key={el.id}
                   className={`${styles.slideElement} ${el.id === selectedElementId ? styles.slideElementSelected : ''}`}
                   style={{
-                    left: fullSlideExcalidrawId === el.id ? '0%' : `${el.x}%`,
-                    top: fullSlideExcalidrawId === el.id ? '0%' : `${el.y}%`,
-                    width: fullSlideExcalidrawId === el.id ? '100%' : `${el.width}%`,
-                    height: fullSlideExcalidrawId === el.id ? '100%' : `${el.height}%`,
-                    zIndex: activeInlineExcalidrawId === el.id ? 90 : (el.id === selectedElementId ? 30 : 10),
-                    cursor: activeInlineExcalidrawId === el.id ? 'default' : 'move',
-                    outline: activeInlineExcalidrawId === el.id ? 'none' : undefined,
+                    left: `${el.x}%`,
+                    top: `${el.y}%`,
+                    width: `${el.width}%`,
+                    height: `${el.height}%`,
+                    zIndex: el.id === selectedElementId ? 30 : 10,
                   }}
                   onMouseDown={(e) => {
-                    if (activeInlineExcalidrawId === el.id) {
-                      e.stopPropagation();
-                      return;
-                    }
                     startDragElement(e, el);
                   }}
                   onClick={(e) => {
@@ -1728,24 +2339,27 @@ export default function EditorPage() {
                     {el.type === 'image' && (
                       <img
                         src={el.content}
-                        alt="Slide image"
+                        alt="Slide element"
                         className={styles.slideImage}
                         draggable={false}
                       />
                     )}
 
-                    {/* Shape Element */}
+                    {/* Realistic 3D Shape Element */}
                     {el.type === 'shape' && (
+                      <RealisticShape
+                        element={el}
+                        isEditable={true}
+                        onContentChange={(newContent) => updateElement(el.id, { content: newContent })}
+                      />
+                    )}
+
+                    {/* Vector Freehand Drawing Element */}
+                    {el.type === 'drawing' && el.content && (
                       <div
-                        className={`${styles.shapeEl} ${styles['shape_' + (el.shapeType || 'rect')]}`}
-                        style={{
-                          ...el.style,
-                          width: '100%',
-                          height: '100%',
-                        }}
-                      >
-                        {el.content && <span>{el.content}</span>}
-                      </div>
+                        className={styles.drawingElementWrapper}
+                        dangerouslySetInnerHTML={{ __html: el.content }}
+                      />
                     )}
 
                     {/* Table Element */}
@@ -1800,56 +2414,17 @@ export default function EditorPage() {
                       </div>
                     )}
 
-                    {/* Excalidraw Hand-Drawn Component */}
-                    {el.type === 'excalidraw' && (
-                      activeInlineExcalidrawId === el.id ? (
-                        <InSlideExcalidraw
-                          element={el}
-                          isFullSlide={fullSlideExcalidrawId === el.id}
-                          onToggleFullSlide={() => {
-                            setFullSlideExcalidrawId((prev) => (prev === el.id ? null : el.id));
-                          }}
-                          onSave={(payload) => {
-                            if (!payload.svgString && (!payload.elements || payload.elements.length === 0) && !el.content) {
-                              deleteElement(el.id);
-                              toast('Empty diagram removed');
-                            } else {
-                              updateElement(el.id, {
-                                content: payload.svgString || el.content,
-                                excalidrawElements: [...payload.elements],
-                                excalidrawAppState: payload.appState,
-                                excalidrawFiles: payload.files,
-                                diagramName: payload.name,
-                              });
-                              toast.success('Diagram saved directly on slide!');
-                            }
-                            setActiveInlineExcalidrawId(null);
-                            setFullSlideExcalidrawId(null);
-                          }}
-                          onCancel={() => {
-                            if (!el.content && (!el.excalidrawElements || el.excalidrawElements.length === 0)) {
-                              deleteElement(el.id);
-                            }
-                            setActiveInlineExcalidrawId(null);
-                            setFullSlideExcalidrawId(null);
-                          }}
-                        />
-                      ) : (
-                        <div
-                          className={styles.excalidrawElementWrapper}
-                          onDoubleClick={(e) => {
-                            e.stopPropagation();
-                            setActiveInlineExcalidrawId(el.id);
-                          }}
-                          title="Double-click to draw directly on this slide"
-                          dangerouslySetInnerHTML={{ __html: el.content }}
-                        />
-                      )
+                    {/* Excalidraw / Diagram SVG */}
+                    {el.type === 'excalidraw' && el.content && (
+                      <div
+                        className={styles.excalidrawElementWrapper}
+                        dangerouslySetInnerHTML={{ __html: el.content }}
+                      />
                     )}
                   </div>
 
-                  {/* 8-point Resize Handles when selected (hidden while actively drawing on slide) */}
-                  {el.id === selectedElementId && activeInlineExcalidrawId !== el.id && (
+                  {/* 8-point Resize Handles when selected */}
+                  {el.id === selectedElementId && (
                     <>
                       <div className={`${styles.resizeHandle} ${styles.handle_nw}`} onMouseDown={(e) => startResizeElement(e, el, 'nw')} />
                       <div className={`${styles.resizeHandle} ${styles.handle_ne}`} onMouseDown={(e) => startResizeElement(e, el, 'ne')} />
@@ -1863,354 +2438,473 @@ export default function EditorPage() {
                   )}
                 </div>
               ))}
+
+              {/* In-Slide Vector Drawing Canvas Overlay */}
+              {isDrawingMode && (
+                <SlideDrawingCanvas
+                  activeTool={drawTool}
+                  color={drawColor}
+                  size={drawSize}
+                  onSaveDrawing={(svgString: string) => {
+                    if (!currentSlide) return;
+                    const newEl: SlideElement = {
+                      id: generateId(),
+                      type: 'drawing',
+                      x: 5,
+                      y: 5,
+                      width: 90,
+                      height: 90,
+                      content: svgString,
+                      style: { pointerEvents: 'none' },
+                    };
+                    updateSlide({ elements: [...currentSlide.elements, newEl] });
+                    setIsDrawingMode(false);
+                    toast.success('Vector drawing inserted onto slide!');
+                  }}
+                  onClose={() => setIsDrawingMode(false)}
+                />
+              )}
             </div>
           </div>
 
-          {/* Canvas Zoom Controls */}
+          {/* Canvas Floating Zoom Bar */}
           <div className={styles.canvasZoomBar}>
-            <button className={styles.zoomBtn} onClick={() => setZoomLevel((z) => Math.max(50, z - 10))}>-</button>
+            <button className={styles.zoomBtn} onClick={() => setZoomLevel((z) => Math.max(50, z - 10))} title="Zoom Out">
+              <ZoomOut size={13} />
+            </button>
             <span className={styles.zoomLabel}>{zoomLevel}%</span>
-            <button className={styles.zoomBtn} onClick={() => setZoomLevel((z) => Math.min(150, z + 10))}>+</button>
-            <button className={styles.zoomBtn} onClick={() => setZoomLevel(100)} title="Reset Zoom">↺</button>
+            <button className={styles.zoomBtn} onClick={() => setZoomLevel((z) => Math.min(150, z + 10))} title="Zoom In">
+              <ZoomIn size={13} />
+            </button>
+            <button className={styles.zoomBtn} onClick={() => setZoomLevel(100)} title="Reset Zoom">
+              <RotateCcw size={13} />
+            </button>
           </div>
         </main>
 
-        {/* ─── 5. SIGNATURE DRAGGABLE DIAGONAL SLASH DIVIDER (/) ─── */}
-        <div
-          className={`${styles.diagonalDivider} ${isDraggingDivider ? styles.dividerActive : ''}`}
-          onMouseDown={handleDividerMouseDown}
-          onDoubleClick={() => setDividerPosition(70)}
-          title="Drag to resize 70/30 layout (Double-click to reset)"
-        >
-          <svg
-            className={styles.slashSvg}
-            preserveAspectRatio="none"
-            viewBox="0 0 28 1000"
-            aria-hidden="true"
+        {/* ─── SIGNATURE DIAGONAL SLASH DIVIDER ─── */}
+        {!isRightPanelCollapsed && (
+          <div
+            className={`${styles.diagonalDivider} ${isDraggingDivider ? styles.dividerActive : ''}`}
+            onMouseDown={handleDividerMouseDown}
+            onDoubleClick={() => setDividerPosition(70)}
+            title="Drag to adjust presentation / resource split (Double-click to reset)"
           >
-            <defs>
-              <linearGradient id="studioSlashGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#6366f1" stopOpacity="0.4" />
-                <stop offset="30%" stopColor="#6366f1" stopOpacity="0.95" />
-                <stop offset="50%" stopColor="#38bdf8" stopOpacity="1" />
-                <stop offset="70%" stopColor="#8b5cf6" stopOpacity="0.95" />
-                <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.4" />
-              </linearGradient>
-              <filter id="studioSlashGlow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="3" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
-            <line
-              x1="22"
-              y1="0"
-              x2="6"
-              y2="1000"
-              stroke="url(#studioSlashGrad)"
-              strokeWidth="2.5"
-              filter="url(#studioSlashGlow)"
-            />
-          </svg>
-
-          {/* Central Pill Handle with split ratio */}
-          <div className={styles.slashPillHandle}>
-            {Math.round(dividerPosition)}/{Math.round(100 - dividerPosition)}
-          </div>
-        </div>
-
-        {/* ─── 6. RIGHT 30% INTERACTIVE SLIDE RESOURCES & NOTES PANEL ─── */}
-        <aside
-          className={styles.resourceArea}
-          style={{ width: `calc(${100 - dividerPosition}% - 14px)` }}
-        >
-          {/* Header */}
-          <div className={styles.resourceHeader}>
-            <div className={styles.resourceHeaderTitle}>
-              <span>Slide {currentSlideIndex + 1} Context</span>
-              <span className={styles.resourceBadge}>
-                {currentSlide?.resources.length || 0} Files • {currentSlide?.notes.length || 0} Notes
+            <svg
+              className={styles.slashSvg}
+              preserveAspectRatio="none"
+              viewBox="0 0 28 1000"
+              aria-hidden="true"
+            >
+              <defs>
+                <linearGradient id="editorSlashGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#f97316" stopOpacity="0.4" />
+                  <stop offset="25%" stopColor="#f97316" stopOpacity="0.95" />
+                  <stop offset="50%" stopColor="#fb923c" stopOpacity="1" />
+                  <stop offset="75%" stopColor="#f59e0b" stopOpacity="0.95" />
+                  <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.4" />
+                </linearGradient>
+                <filter id="editorSlashGlow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+              <line
+                x1="22"
+                y1="0"
+                x2="6"
+                y2="1000"
+                stroke="#f97316"
+                strokeWidth="5"
+                opacity="0.2"
+                filter="url(#editorSlashGlow)"
+                vectorEffect="non-scaling-stroke"
+              />
+              <line
+                x1="22"
+                y1="0"
+                x2="6"
+                y2="1000"
+                stroke="url(#editorSlashGrad)"
+                strokeWidth="2.5"
+                filter="url(#editorSlashGlow)"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+            <div className={styles.slashPillHandle}>
+              <span className={styles.slashRatioLabel}>
+                {Math.round(dividerPosition)} / {Math.round(100 - dividerPosition)}
               </span>
             </div>
           </div>
+        )}
 
-          {/* Segmented Tabs */}
-          <div className={styles.resourceTabs}>
+        {/* ─── 30% RIGHT WORKSPACE PANEL (RESOURCES + NOTES) ─── */}
+        <aside
+          className={styles.rightWorkspacePanel}
+          style={{
+            width: isRightPanelCollapsed ? '0px' : `calc(${100 - dividerPosition}% - 14px)`,
+            display: isRightPanelCollapsed ? 'none' : 'flex',
+          }}
+          aria-label="Interactive Resources and Notes"
+        >
+          {/* Header Tabs: Resources | Notes | Collapse */}
+          <div className={styles.rightPanelHeaderTabs}>
             <button
-              className={`${styles.resourceTab} ${activeResourceTab === 'resources' ? styles.resourceTabActive : ''}`}
+              className={`${styles.rightPanelTabBtn} ${activeResourceTab === 'resources' ? styles.rightPanelTabBtnActive : ''}`}
               onClick={() => setActiveResourceTab('resources')}
+              title="Slide Resources"
             >
-              <span>📁</span> Resources
-              <span className={styles.resourceTabBadge}>{currentSlide?.resources.length || 0}</span>
+              <Folder size={13} />
+              <span>Resources</span>
+              <span className={styles.resourceTabBadge}>{currentSlide?.resources?.length || 0}</span>
             </button>
             <button
-              className={`${styles.resourceTab} ${activeResourceTab === 'notes' ? styles.resourceTabActive : ''}`}
+              className={`${styles.rightPanelTabBtn} ${activeResourceTab === 'notes' ? styles.rightPanelTabBtnActive : ''}`}
               onClick={() => setActiveResourceTab('notes')}
+              title="Speaker Notes"
             >
-              <span>📝</span> Notes
-              <span className={styles.resourceTabBadge}>{currentSlide?.notes.length || 0}</span>
+              <MessageSquare size={13} />
+              <span>Notes</span>
+              <span className={styles.resourceTabBadge}>{currentSlide?.notes?.length || 0}</span>
             </button>
             <button
-              className={`${styles.resourceTab} ${activeResourceTab === 'design' ? styles.resourceTabActive : ''}`}
-              onClick={() => setActiveResourceTab('design')}
+              className={styles.rightPanelToggleBtn}
+              onClick={() => setIsRightPanelCollapsed(true)}
+              title="Collapse Resource Panel"
             >
-              <span>🎨</span> Design
+              <ChevronRight size={14} />
             </button>
           </div>
 
-          {/* Tab 1: Resources & Attachments */}
-          {activeResourceTab === 'resources' && (
-            <div className={styles.resourceBody}>
-              {/* Drag & Drop Upload Zone */}
-              <div
-                className={styles.dropzone}
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  handleFileUpload(e.dataTransfer.files);
-                }}
-              >
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  style={{ display: 'none' }}
-                  multiple
-                  onChange={(e) => handleFileUpload(e.target.files)}
-                />
-                <span className={styles.dropzoneIcon}>📁</span>
-                <span className={styles.dropzoneText}>Click or drop files to attach</span>
-                <span className={styles.dropzoneSub}>Supports PDF, HTML/JS/CSS, Images, Docs</span>
-              </div>
-
-              {/* Action Buttons */}
-              <div className={styles.actionRow}>
-                <button
-                  className={styles.subActionBtn}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  + Upload File
-                </button>
-                <button
-                  className={styles.subActionBtn}
-                  onClick={() => setShowLinkModal(true)}
-                >
-                  + Add Link
-                </button>
-                <button
-                  className={styles.subActionBtn}
-                  onClick={() => {
-                    setIsResourceWhiteboard(true);
-                    setEditingExcalidrawElement(null);
-                    setShowExcalidrawModal(true);
+          {/* Panel Content Area */}
+          <div className={styles.rightPanelContentArea}>
+            {/* 1. RESOURCES TAB */}
+            {activeResourceTab === 'resources' && (
+              <>
+                {/* Whiteboard Studio Quick Integration Card */}
+                <div
+                  style={{
+                    padding: '12px',
+                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(56, 189, 248, 0.05))',
+                    border: '1px solid rgba(99, 102, 241, 0.2)',
+                    borderRadius: '10px',
                   }}
-                  title="Draw and attach a hand-drawn diagram to this slide"
                 >
-                  ✏️ + Whiteboard
-                </button>
-              </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '12px', color: '#4f46e5' }}>
+                      <Sparkles size={14} color="#6366f1" />
+                      <span>Whiteboard Studio</span>
+                    </div>
+                    <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: 'rgba(99,102,241,0.12)', color: '#4f46e5', fontWeight: 600 }}>
+                      Excalidraw
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 10px 0', lineHeight: 1.4 }}>
+                    Draw diagrams & sketches, then export directly to active slide as an image.
+                  </p>
+                  <button
+                    className={styles.whiteboardLaunchBtn}
+                    onClick={() => setShowWhiteboardModal(true)}
+                    style={{ width: '100%', justifyContent: 'center' }}
+                  >
+                    <PenTool size={13} />
+                    <span>Open Whiteboard Studio</span>
+                  </button>
+                </div>
 
-              {/* Resource Item Cards */}
-              {currentSlide?.resources && currentSlide.resources.length > 0 ? (
-                currentSlide.resources.map((res) => (
-                  <div key={res.id} className={styles.resourceCard}>
-                    <div className={styles.resourceLeft}>
-                      <span className={styles.resourceIcon}>{getResourceIcon(res.type)}</span>
-                      <div style={{ minWidth: 0 }}>
-                        <div className={styles.resourceName} title={res.name}>{res.name}</div>
-                        <div className={styles.resourceMeta}>
-                          {res.type} {res.size ? `• ${(res.size / 1024).toFixed(1)} KB` : ''}
+                {/* Drag & Drop Upload Zone */}
+                <div
+                  className={styles.dropzone}
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    handleFileUpload(e.dataTransfer.files);
+                  }}
+                >
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    style={{ display: 'none' }}
+                    multiple
+                    onChange={(e) => handleFileUpload(e.target.files)}
+                  />
+                  <UploadCloud size={24} className={styles.dropzoneIcon} />
+                  <span className={styles.dropzoneText}>Click or drop files to attach</span>
+                  <span className={styles.dropzoneSub}>PDF, Code (.js, .html, .py), Docs, Images</span>
+                </div>
+
+                {/* Action Buttons */}
+                <div className={styles.actionRow}>
+                  <button
+                    className={styles.subActionBtn}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Plus size={14} />
+                    <span>Upload File</span>
+                  </button>
+                  <button
+                    className={styles.subActionBtn}
+                    onClick={() => setShowLinkModal(true)}
+                  >
+                    <ExternalLink size={14} />
+                    <span>Add Link</span>
+                  </button>
+                </div>
+
+                {/* Attached Resources List */}
+                {currentSlide?.resources && currentSlide.resources.length > 0 ? (
+                  currentSlide.resources.map((res) => (
+                    <div key={res.id} className={styles.resourceCard}>
+                      <div className={styles.resourceLeft}>
+                        <div className={styles.resourceIcon}>
+                          {res.type === 'code' ? (
+                            <Code2 size={16} />
+                          ) : res.type === 'document' || res.name.toLowerCase().endsWith('.pdf') ? (
+                            <FileText size={16} />
+                          ) : res.type === 'link' ? (
+                            <ExternalLink size={16} />
+                          ) : (
+                            <Folder size={16} />
+                          )}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div className={styles.resourceName} title={res.name}>{res.name}</div>
+                          <div className={styles.resourceMeta}>
+                            {res.type} {res.size ? `• ${(res.size / 1024).toFixed(1)} KB` : ''}
+                          </div>
                         </div>
                       </div>
+
+                      <div className={styles.resourceActions}>
+                        {(res.type === 'document' || res.name.toLowerCase().endsWith('.pdf')) && (
+                          <button
+                            className={styles.resBtn}
+                            onClick={() => openPdfResource(res)}
+                            title="Preview PDF"
+                          >
+                            View
+                          </button>
+                        )}
+
+                        {res.type === 'code' && (
+                          <button
+                            className={`${styles.resBtn} ${styles.resBtnRun}`}
+                            onClick={() => runCodeResource(res)}
+                            title="Run Live Sandbox"
+                          >
+                            <Play size={12} fill="currentColor" />
+                            <span>Run</span>
+                          </button>
+                        )}
+
+                        {res.type === 'image' && res.url && (
+                          <button
+                            className={styles.resBtn}
+                            onClick={() => {
+                              const newElem: SlideElement = {
+                                id: generateId(),
+                                type: 'image',
+                                x: 25,
+                                y: 25,
+                                width: 50,
+                                height: 50,
+                                content: res.url || '',
+                                style: { borderRadius: '6px' },
+                              };
+                              const updatedElements = [...currentSlide.elements, newElem];
+                              const newSlides = [...presentation.slides];
+                              newSlides[currentSlideIndex] = { ...currentSlide, elements: updatedElements };
+                              setPresentation({ ...presentation, slides: newSlides });
+                              pushHistory(newSlides);
+                              setSelectedElementId(newElem.id);
+                              setHasChanges(true);
+                              toast.success('Inserted image onto slide');
+                            }}
+                            title="Insert image onto current slide"
+                          >
+                            Insert
+                          </button>
+                        )}
+
+                        {res.type === 'link' && res.url && (
+                          <button
+                            className={styles.resBtn}
+                            onClick={() => window.open(res.url, '_blank')}
+                            title="Open Link"
+                          >
+                            <ExternalLink size={12} />
+                          </button>
+                        )}
+
+                        <button
+                          className={`${styles.resBtn} ${styles.resBtnDelete}`}
+                          onClick={() =>
+                            updateSlide({
+                              resources: currentSlide.resources.filter((r) => r.id !== res.id),
+                            })
+                          }
+                          title="Delete resource"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
-
-                    <div className={styles.resourceActions}>
-                      {(res.type === 'document' || res.name.toLowerCase().endsWith('.pdf')) && (
-                        <button
-                          className={styles.resBtn}
-                          onClick={() => openPdfResource(res)}
-                          title="Preview PDF"
-                        >
-                          View
-                        </button>
-                      )}
-
-                      {res.type === 'code' && (
-                        <button
-                          className={`${styles.resBtn} ${styles.resBtnRun}`}
-                          onClick={() => runCodeResource(res)}
-                          title="Run Live Sandbox"
-                        >
-                          ▶ Run
-                        </button>
-                      )}
-
-                      {res.type === 'link' && res.url && (
-                        <button
-                          className={styles.resBtn}
-                          onClick={() => window.open(res.url, '_blank')}
-                          title="Open Link"
-                        >
-                          ↗
-                        </button>
-                      )}
-
-                      {res.type === 'excalidraw' && (
-                        <button
-                          className={styles.resBtn}
-                          onClick={() => {
-                            setIsResourceWhiteboard(true);
-                            setEditingExcalidrawElement({
-                              id: res.id,
-                              type: 'excalidraw',
-                              x: 0,
-                              y: 0,
-                              width: 0,
-                              height: 0,
-                              content: res.content || '',
-                              style: {},
-                              excalidrawElements: res.excalidrawElements,
-                              diagramName: res.name.replace('.excalidraw', ''),
-                            });
-                            setShowExcalidrawModal(true);
-                          }}
-                          title="Open and edit Whiteboard"
-                        >
-                          ✏️ Edit
-                        </button>
-                      )}
-
-                      <button
-                        className={`${styles.resBtn} ${styles.resBtnDelete}`}
-                        onClick={() =>
-                          updateSlide({
-                            resources: currentSlide.resources.filter((r) => r.id !== res.id),
-                          })
-                        }
-                        title="Delete resource"
-                      >
-                        ✕
-                      </button>
-                    </div>
+                  ))
+                ) : (
+                  <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12, padding: '24px 0' }}>
+                    No resources attached to this slide yet.
                   </div>
-                ))
-              ) : (
-                <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12, padding: '24px 0' }}>
-                  No resources attached to this slide yet.
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </>
+            )}
 
-          {/* Tab 2: Comic-Style Speaker Notes */}
-          {activeResourceTab === 'notes' && (
-            <div className={styles.resourceBody}>
-              <button
-                className={styles.subActionBtn}
-                onClick={addNote}
-                style={{ width: '100%' }}
-              >
-                + Add Comic Note
-              </button>
+            {/* 2. NOTES TAB */}
+            {activeResourceTab === 'notes' && (
+              <>
+                <button
+                  className={styles.subActionBtn}
+                  onClick={addNote}
+                  style={{ width: '100%' }}
+                >
+                  <Plus size={14} />
+                  <span>Add Speaker Note</span>
+                </button>
 
-              {currentSlide?.notes && currentSlide.notes.length > 0 ? (
-                currentSlide.notes.map((note, nIdx) => (
-                  <div key={note.id} className={styles.comicNoteCard}>
-                    <div className={styles.comicNoteHeader}>
-                      <span>💬 Note #{nIdx + 1}</span>
-                      <button
-                        className={styles.comicNoteDeleteBtn}
-                        onClick={() =>
-                          updateSlide({
-                            notes: currentSlide.notes.filter((n) => n.id !== note.id),
-                          })
-                        }
-                        title="Delete Note"
-                      >
-                        ✕
-                      </button>
+                {currentSlide?.notes && currentSlide.notes.length > 0 ? (
+                  currentSlide.notes.map((note, nIdx) => (
+                    <div key={note.id} className={styles.comicNoteCard}>
+                      <div className={styles.comicNoteHeader}>
+                        <span>💬 Note #{nIdx + 1}</span>
+                        <button
+                          className={styles.comicNoteDeleteBtn}
+                          onClick={() =>
+                            updateSlide({
+                              notes: currentSlide.notes.filter((n) => n.id !== note.id),
+                            })
+                          }
+                          title="Delete Note"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                      <textarea
+                        className={styles.comicNoteTextarea}
+                        rows={4}
+                        value={note.content || ''}
+                        onChange={(e) => {
+                          const updated = currentSlide.notes.map((n) =>
+                            n.id === note.id ? { ...n, content: e.target.value } : n
+                          );
+                          updateSlide({ notes: updated });
+                        }}
+                        placeholder="Type talking points or speaker notes here..."
+                      />
                     </div>
-                    <textarea
-                      className={styles.comicNoteTextarea}
-                      rows={4}
-                      value={note.content || ''}
-                      onChange={(e) => {
-                        const updated = currentSlide.notes.map((n) =>
-                          n.id === note.id ? { ...n, content: e.target.value } : n
-                        );
-                        updateSlide({ notes: updated });
-                      }}
-                      placeholder="Type your speaker note or talking points here..."
-                    />
+                  ))
+                ) : (
+                  <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12, padding: '24px 0' }}>
+                    No speaker notes for this slide yet.
                   </div>
-                ))
-              ) : (
-                <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12, padding: '24px 0' }}>
-                  No notes for this slide. Click "+ Add Comic Note" to create one.
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Tab 3: Slide Canvas Design & Background */}
-          {activeResourceTab === 'design' && (
-            <div className={styles.resourceBody}>
-              <div className={styles.designSection}>
-                <span className={styles.sectionTitle}>Curated Gradients</span>
-                <div className={styles.gradientGrid}>
-                  {GRADIENT_PRESETS.map((p) => (
-                    <div
-                      key={p.name}
-                      className={`${styles.gradientCard} ${
-                        currentSlide?.background?.value === p.value ? styles.gradientCardActive : ''
-                      }`}
-                      style={{ background: p.value }}
-                      onClick={() => updateSlide({ background: { type: 'gradient', value: p.value } })}
-                      title={p.name}
-                    >
-                      {p.name}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className={styles.designSection} style={{ marginTop: 12 }}>
-                <span className={styles.sectionTitle}>Solid Color Fill</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div
-                    className={styles.colorPickerBtn}
-                    style={{
-                      width: 32,
-                      height: 32,
-                      background: currentSlide?.background?.value || '#0a0d16',
-                    }}
-                  >
-                    <input
-                      type="color"
-                      className={styles.hiddenColorInput}
-                      value={currentSlide?.background?.value?.startsWith('#') ? currentSlide.background.value : '#0a0d16'}
-                      onChange={(e) => updateSlide({ background: { type: 'color', value: e.target.value } })}
-                    />
-                  </div>
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                    Pick custom canvas color
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
+                )}
+              </>
+            )}
+          </div>
         </aside>
+
+        {/* Floating Expand Button for Right Panel when collapsed */}
+        {isRightPanelCollapsed && (
+          <button
+            className={styles.rightPanelToggleBtn}
+            style={{
+              position: 'absolute',
+              right: 12,
+              top: 12,
+              zIndex: 40,
+              background: '#ffffff',
+              boxShadow: '0 2px 8px rgba(15, 23, 42, 0.12)',
+            }}
+            onClick={() => setIsRightPanelCollapsed(false)}
+            title="Expand Resources Panel"
+          >
+            <Folder size={14} />
+          </button>
+        )}
       </div>
+
+      {/* ─── POWERPOINT STATUS FOOTER BAR ─── */}
+      <footer className={styles.powerpointStatusBar} aria-label="Status Bar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <span>Slide {currentSlideIndex + 1} of {presentation.slides.length}</span>
+          <span style={{ opacity: 0.3 }}>|</span>
+          <span>{selectedElement ? `Selected: ${selectedElement.type.toUpperCase()}` : 'Ready'}</span>
+          <span style={{ opacity: 0.3 }}>|</span>
+          <span>Resources: {currentSlide?.resources?.length || 0} attached</span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            className={styles.toolPill}
+            onClick={() => setShowWhiteboardModal(true)}
+            style={{
+              height: 22,
+              padding: '0 8px',
+              fontSize: 11,
+              background: 'rgba(99, 102, 241, 0.15)',
+              borderColor: 'rgba(99, 102, 241, 0.3)',
+              color: '#c7d2fe',
+              cursor: 'pointer',
+            }}
+            title="Launch Whiteboard Studio"
+          >
+            <PenTool size={11} />
+            <span>Whiteboard Studio</span>
+          </button>
+          <span style={{ opacity: 0.3 }}>|</span>
+          <span>Zoom: {zoomLevel}%</span>
+          <button
+            className={styles.zoomBtn}
+            onClick={() => setZoomLevel((prev) => Math.max(50, prev - 10))}
+            title="Zoom Out"
+            style={{ width: 22, height: 22 }}
+          >
+            <ZoomOut size={12} />
+          </button>
+          <button
+            className={styles.zoomBtn}
+            onClick={() => setZoomLevel((prev) => Math.min(200, prev + 10))}
+            title="Zoom In"
+            style={{ width: 22, height: 22 }}
+          >
+            <ZoomIn size={12} />
+          </button>
+          <button
+            className={styles.zoomBtn}
+            onClick={() => setZoomLevel(100)}
+            title="Reset Zoom"
+            style={{ width: 22, height: 22 }}
+          >
+            <RotateCcw size={12} />
+          </button>
+        </div>
+      </footer>
 
       {/* ─── MODAL 1: ADD IMAGE ─── */}
       {showImageModal && (
         <div className={styles.modalBackdrop} onClick={() => setShowImageModal(false)}>
           <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <span className={styles.modalTitle}>Insert Image</span>
-              <button className={styles.modalCloseBtn} onClick={() => setShowImageModal(false)}>✕</button>
+              <span className={styles.modalTitle}>
+                <ImageIcon size={18} />
+                <span>Insert Image</span>
+              </span>
+              <button className={styles.modalCloseBtn} onClick={() => setShowImageModal(false)}>
+                <X size={16} />
+              </button>
             </div>
             <div className={styles.modalBody}>
               <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
@@ -2267,7 +2961,7 @@ export default function EditorPage() {
                       }
                     }}
                   />
-                  <span className={styles.dropzoneIcon}>🖼</span>
+                  <UploadCloud size={32} className={styles.dropzoneIcon} />
                   <span className={styles.dropzoneText}>Click to browse image from computer</span>
                   <span className={styles.dropzoneSub}>PNG, JPG, WEBP, GIF supported</span>
                 </div>
@@ -2279,11 +2973,12 @@ export default function EditorPage() {
                     <div
                       key={img.label}
                       style={{
-                        borderRadius: 6,
+                        borderRadius: 8,
                         overflow: 'hidden',
                         cursor: 'pointer',
                         border: '1px solid var(--border-default)',
                         background: '#090d16',
+                        transition: 'transform 0.15s ease',
                       }}
                       onClick={() => {
                         if (currentSlide) {
@@ -2304,7 +2999,7 @@ export default function EditorPage() {
                       }}
                     >
                       <img src={img.url} alt={img.label} style={{ width: '100%', height: 75, objectFit: 'cover' }} />
-                      <div style={{ padding: '4px 8px', fontSize: 11, fontWeight: 600, color: 'var(--text-primary)' }}>
+                      <div style={{ padding: '6px 8px', fontSize: 11, fontWeight: 600, color: 'var(--text-primary)' }}>
                         {img.thumb} {img.label}
                       </div>
                     </div>
@@ -2320,8 +3015,8 @@ export default function EditorPage() {
                     value={imageUrlInput}
                     onChange={(e) => setImageUrlInput(e.target.value)}
                     style={{
-                      padding: '8px 12px',
-                      borderRadius: 6,
+                      padding: '10px 14px',
+                      borderRadius: 8,
                       background: 'var(--bg-tertiary)',
                       border: '1px solid var(--border-default)',
                       color: 'var(--text-primary)',
@@ -2362,10 +3057,15 @@ export default function EditorPage() {
       {/* ─── MODAL 2: ADD LINK ─── */}
       {showLinkModal && (
         <div className={styles.modalBackdrop} onClick={() => setShowLinkModal(false)}>
-          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
             <div className={styles.modalHeader}>
-              <span className={styles.modalTitle}>Add Web Link Resource</span>
-              <button className={styles.modalCloseBtn} onClick={() => setShowLinkModal(false)}>✕</button>
+              <span className={styles.modalTitle}>
+                <ExternalLink size={18} />
+                <span>Add Web Link Resource</span>
+              </span>
+              <button className={styles.modalCloseBtn} onClick={() => setShowLinkModal(false)}>
+                <X size={16} />
+              </button>
             </div>
             <div className={styles.modalBody} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <input
@@ -2374,12 +3074,13 @@ export default function EditorPage() {
                 value={linkName}
                 onChange={(e) => setLinkName(e.target.value)}
                 style={{
-                  padding: '8px 12px',
-                  borderRadius: 6,
+                  padding: '10px 14px',
+                  borderRadius: 8,
                   background: 'var(--bg-tertiary)',
                   border: '1px solid var(--border-default)',
                   color: 'var(--text-primary)',
                   outline: 'none',
+                  fontSize: 13,
                 }}
               />
               <input
@@ -2388,12 +3089,13 @@ export default function EditorPage() {
                 value={linkUrl}
                 onChange={(e) => setLinkUrl(e.target.value)}
                 style={{
-                  padding: '8px 12px',
-                  borderRadius: 6,
+                  padding: '10px 14px',
+                  borderRadius: 8,
                   background: 'var(--bg-tertiary)',
                   border: '1px solid var(--border-default)',
                   color: 'var(--text-primary)',
                   outline: 'none',
+                  fontSize: 13,
                 }}
               />
             </div>
@@ -2430,17 +3132,21 @@ export default function EditorPage() {
           <div className={`${styles.modalCard} ${styles.codeRunnerCard}`} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className={styles.modalTitle}>⚡ Live Code Sandbox — {previewCodeResource.name}</span>
+                <Code2 size={18} color="var(--accent-blue)" />
+                <span className={styles.modalTitle}>Live Code Sandbox — {previewCodeResource.name}</span>
               </div>
-              <div style={{ display: 'flex', gap: 6 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   className={`${styles.actionBtn} ${styles.btnPrimary}`}
                   onClick={() => runCodeResource(previewCodeResource)}
                   title="Re-run sandbox"
                 >
-                  ▶ Run
+                  <Play size={14} fill="currentColor" />
+                  <span>Run</span>
                 </button>
-                <button className={styles.modalCloseBtn} onClick={() => setPreviewCodeResource(null)}>✕</button>
+                <button className={styles.modalCloseBtn} onClick={() => setPreviewCodeResource(null)}>
+                  <X size={16} />
+                </button>
               </div>
             </div>
             <div className={styles.modalBody} style={{ padding: 12 }}>
@@ -2448,7 +3154,7 @@ export default function EditorPage() {
                 <div className={styles.codeEditorPane}>
                   <div className={styles.codePaneHeader}>
                     <span>Source Code (Editable)</span>
-                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>Live Sandbox</span>
+                    <span style={{ fontSize: 11, color: 'var(--accent-cyan)' }}>Live Execution</span>
                   </div>
                   <textarea
                     className={styles.codeTextarea}
@@ -2477,8 +3183,13 @@ export default function EditorPage() {
         <div className={styles.modalBackdrop} onClick={() => setPreviewPdfResource(null)}>
           <div className={`${styles.modalCard} ${styles.codeRunnerCard}`} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <span className={styles.modalTitle}>📕 PDF Reference — {previewPdfResource.name}</span>
-              <button className={styles.modalCloseBtn} onClick={() => setPreviewPdfResource(null)}>✕</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FileText size={18} color="var(--accent-rose)" />
+                <span className={styles.modalTitle}>PDF Document — {previewPdfResource.name}</span>
+              </div>
+              <button className={styles.modalCloseBtn} onClick={() => setPreviewPdfResource(null)}>
+                <X size={16} />
+              </button>
             </div>
             <div className={styles.modalBody} style={{ padding: 0 }}>
               <iframe
@@ -2491,26 +3202,13 @@ export default function EditorPage() {
         </div>
       )}
 
-      {/* ─── MODAL 5: EXCALIDRAW HAND-DRAWN DIAGRAM & WHITEBOARD ─── */}
-      <ExcalidrawModal
-        isOpen={showExcalidrawModal}
-        onClose={() => {
-          setShowExcalidrawModal(false);
-          setEditingExcalidrawElement(null);
-          setIsResourceWhiteboard(false);
-        }}
-        onSave={handleSaveExcalidraw}
-        initialData={
-          editingExcalidrawElement
-            ? {
-                elements: editingExcalidrawElement.excalidrawElements,
-                appState: editingExcalidrawElement.excalidrawAppState,
-                files: editingExcalidrawElement.excalidrawFiles,
-                name: editingExcalidrawElement.diagramName,
-              }
-            : null
-        }
-        defaultTheme={theme}
+      {/* ─── MODAL 5: INTEGRATED WHITEBOARD STUDIO (EXCALIDRAW) ─── */}
+      <WhiteboardModal
+        isOpen={showWhiteboardModal}
+        onClose={() => setShowWhiteboardModal(false)}
+        onExportToSlide={handleExportWhiteboardToSlide}
+        onSaveAsResource={handleSaveWhiteboardResource}
+        slideNumber={currentSlideIndex + 1}
       />
     </div>
   );

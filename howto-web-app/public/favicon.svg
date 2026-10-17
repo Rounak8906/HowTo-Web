@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Subtle dark gradient for background squircle -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#18191e"/>
+      <stop offset="100%" stop-color="#0f1013"/>
+    </linearGradient>
+    <!-- Electric lavender purple for the hexagon -->
+    <linearGradient id="hexGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#b49aff"/>
+      <stop offset="100%" stop-color="#9370f5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Dark base squircle for high contrast in browser tabs -->
+  <rect width="512" height="512" rx="100" fill="url(#bgGrad)"/>
+
+  <!-- Outer Purple Hexagon -->
+  <polygon 
+    points="256,54 430,154.5 430,357.5 256,458 82,357.5 82,154.5" 
+    fill="none" 
+    stroke="url(#hexGrad)" 
+    stroke-width="36" 
+    stroke-linejoin="round"
+  />
+
+  <!-- Top Isometric Slide Diamond -->
+  <polygon 
+    points="256,168 372,235 256,302 140,235" 
+    fill="#16171b" 
+    stroke="#edece8" 
+    stroke-width="14" 
+    stroke-linejoin="round"
+  />
+
+  <!-- Play Button Triangle on Top Slide -->
+  <polygon 
+    points="244,214 278,235 244,256" 
+    fill="#edece8"
+  />
+
+  <!-- Middle Isometric Slide Chevron -->
+  <polyline 
+    points="140,274 256,341 372,274" 
+    fill="none" 
+    stroke="#edece8" 
+    stroke-width="14" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"
+  />
+
+  <!-- Bottom Isometric Slide Chevron -->
+  <polyline 
+    points="140,313 256,380 372,313" 
+    fill="none" 
+    stroke="#edece8" 
+    stroke-width="14" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"
+  />
+</svg>

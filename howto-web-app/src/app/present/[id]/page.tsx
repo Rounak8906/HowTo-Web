@@ -7,6 +7,7 @@ import { getPresentation } from '@/lib/firestore';
 import { getLocalFileUrl } from '@/lib/localFileStore';
 import type { Presentation, Resource } from '@/lib/types';
 import { getResourceIcon, clamp } from '@/lib/utils';
+import RealisticShape from '@/components/ui/RealisticShape';
 import styles from './present.module.css';
 
 export default function PresentPage() {
@@ -262,7 +263,7 @@ export default function PresentPage() {
         >
           <div
             className={styles.slide}
-            style={{ background: currentSlide?.background.value || '#12141a' }}
+            style={{ background: currentSlide?.background.value || '#ffffff' }}
           >
             {currentSlide?.elements.map((el) => (
               <div
@@ -298,12 +299,13 @@ export default function PresentPage() {
                   </div>
                 )}
                 {el.type === 'shape' && (
+                  <RealisticShape element={el} isEditable={false} />
+                )}
+                {el.type === 'drawing' && (
                   <div
-                    className={`${styles.slideShape} ${styles['shape_' + (el.shapeType || 'rect')]}`}
-                    style={el.style}
-                  >
-                    {el.content && <span>{el.content}</span>}
-                  </div>
+                    style={{ width: '100%', height: '100%', pointerEvents: 'none' }}
+                    dangerouslySetInnerHTML={{ __html: el.content }}
+                  />
                 )}
                 {el.type === 'code' && (
                   <div className={styles.codeBlockElement}>

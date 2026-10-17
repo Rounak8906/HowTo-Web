@@ -2,9 +2,11 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { getPresentation, forkPresentation, checkForUpdates, pullUpdates } from '@/lib/firestore';
+import { getPresentation, forkPresentation, checkForUpdates, pullUpdates, toggleLikePresentation } from '@/lib/firestore';
 import type { Presentation, Resource } from '@/lib/types';
+import { ROLE_INFO } from '@/lib/types';
 import { getResourceIcon, clamp, formatDate } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import styles from './view.module.css';
@@ -57,6 +59,43 @@ export default function ViewPage() {
   const currentSlide = presentation?.slides[currentSlideIndex] || null;
   const totalSlides = presentation?.slides.length || 0;
   const isOwner = user?.uid === presentation?.ownerId;
+  const isLiked = Boolean(user && presentation?.likedBy?.includes(user.uid));
+
+  const handleToggleLike = async () => {
+    if (!user) {
+      toast.error('Please log in to like');
+      router.push('/login');
+      return;
+    }
+    if (!presentation) return;
+
+    const currentlyLiked = Boolean(presentation.likedBy?.includes(user.uid));
+    // Optimistic UI update
+    setPresentation((prev) => {
+      if (!prev) return prev;
+      const currentLikedBy = prev.likedBy || [];
+      const nextLikedBy = currentlyLiked
+        ? currentLikedBy.filter((uid) => uid !== user.uid)
+        : [...currentLikedBy, user.uid];
+      const nextCount = Math.max(0, (prev.likesCount || 0) + (currentlyLiked ? -1 : 1));
+      return {
+        ...prev,
+        likedBy: nextLikedBy,
+        likesCount: nextCount,
+      };
+    });
+
+    try {
+      const res = await toggleLikePresentation(presentation.id, user.uid);
+      if (res.liked) {
+        toast.success('Liked! Creator awarded +10 points ⭐');
+      }
+    } catch (err) {
+      console.error('Failed to toggle like:', err);
+      toast.error('Failed to like presentation');
+      loadPresentation();
+    }
+  };
 
   const handleFork = async () => {
     if (!user) {
@@ -70,10 +109,11 @@ export default function ViewPage() {
       const fork = await forkPresentation(
         presentation.id,
         user.uid,
-        user.displayName,
-        user.photoURL
+        user.displayName || 'Creator',
+        user.photoURL,
+        user.username
       );
-      toast.success('Forked! Redirecting to your copy...');
+      toast.success('Forked! Creator awarded +25 points ⭐ Redirecting to your copy...');
       router.push(`/editor/${fork.id}`);
     } catch (err) {
       toast.error('Failed to fork presentation');
@@ -149,9 +189,9 @@ export default function ViewPage() {
     return (
       <div className={styles.notFound}>
         <h2>Presentation Not Found</h2>
-        <p>This presentation doesn't exist or is private.</p>
+        <p>This presentation may be private or does not exist.</p>
         <button className="btn btn-primary" onClick={() => router.push('/dashboard')}>
-          Go to Dashboard
+          Back to Workspace
         </button>
       </div>
     );
@@ -160,10 +200,13 @@ export default function ViewPage() {
   if (!presentation) {
     return (
       <div className={styles.loadingPage}>
-        <div className="animate-spin" style={{ fontSize: '2rem' }}>⬡</div>
+        <div className="spinner" />
+        <p>Loading presentation...</p>
       </div>
     );
   }
+
+  const ownerRoleInfo = presentation.ownerRole ? (ROLE_INFO[presentation.ownerRole] || null) : null;
 
   return (
     <div className={styles.viewPage}>
@@ -175,9 +218,16 @@ export default function ViewPage() {
           </button>
           <div className={styles.presInfo}>
             <h1 className={styles.presTitle}>{presentation.title}</h1>
-            <p className={styles.presMeta}>
-              by {presentation.ownerName} • {presentation.slides.length} slides • v{presentation.version}
-            </p>
+            <div className={styles.presMeta}>
+              <span>by {presentation.ownerName}</span>
+              {ownerRoleInfo && (
+                <span className={styles.authorRoleBadge} title={`Role: ${ownerRoleInfo.label}`}>
+                  <span>{ownerRoleInfo.icon}</span>
+                  <span>{ownerRoleInfo.label}</span>
+                </span>
+              )}
+              <span>• {presentation.slides.length} slides • v{presentation.version}</span>
+            </div>
           </div>
         </div>
 
@@ -193,6 +243,17 @@ export default function ViewPage() {
             </button>
           )}
 
+          {/* Like Button (Awards +10 pts to Creator) */}
+          <button
+            type="button"
+            className={`btn btn-sm ${isLiked ? styles.likedBtn : 'btn-secondary'}`}
+            onClick={handleToggleLike}
+            title={isLiked ? 'Unlike' : 'Like presentation (+10 pts to creator)'}
+          >
+            <span style={{ marginRight: 4 }}>{isLiked ? '❤️' : '🤍'}</span>
+            <span>{presentation.likesCount || 0}</span>
+          </button>
+
           <button
             className="btn btn-primary btn-sm"
             onClick={() => router.push(`/present/${presentation.id}`)}
@@ -200,15 +261,14 @@ export default function ViewPage() {
             ▶ Present
           </button>
 
-          {!isOwner && (
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={handleFork}
-              disabled={isForking}
-            >
-              🍴 {isForking ? 'Forking...' : 'Fork'}
-            </button>
-          )}
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={handleFork}
+            disabled={isForking}
+            title={isOwner ? 'Duplicate presentation' : 'Fork presentation (+25 pts to creator)'}
+          >
+            🍴 {isForking ? 'Forking...' : isOwner ? `Duplicate (${presentation.forkCount || 0})` : `Fork (${presentation.forkCount || 0})`}
+          </button>
 
           {isOwner && (
             <button
@@ -224,8 +284,14 @@ export default function ViewPage() {
       {/* Fork info banner */}
       {presentation.forkOf && (
         <div className={styles.forkBanner}>
-          🍴 Forked from <strong>{presentation.forkOf.originalOwnerName}</strong>&apos;s &quot;{presentation.forkOf.originalTitle}&quot;
-          {' '}• Base version: v{presentation.forkOf.baseVersion}
+          <span>🍴 Forked from </span>
+          <Link
+            href={`/view/${presentation.forkOf.originalId}`}
+            style={{ color: '#a78bfa', fontWeight: 600, textDecoration: 'none' }}
+          >
+            {presentation.forkOf.originalOwnerUsername || presentation.forkOf.originalOwnerName}&apos;s &quot;{presentation.forkOf.originalTitle}&quot;
+          </Link>
+          <span style={{ marginLeft: 6, opacity: 0.7 }}>• Base version: v{presentation.forkOf.baseVersion}</span>
         </div>
       )}
 

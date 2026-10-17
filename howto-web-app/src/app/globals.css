@@ -6,6 +6,10 @@
 /* --- Google Fonts Import --- */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Comic+Neue:wght@400;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;1,400&display=swap');
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* --- CSS Reset --- */
 *,
 *::before,
@@ -19,6 +23,28 @@
 :root,
 [data-theme="dark"] {
   color-scheme: dark;
+
+  /* shadcn UI variables (dark default) */
+  --background: 224 71% 4%;
+  --foreground: 210 40% 98%;
+  --card: 224 71% 6%;
+  --card-foreground: 210 40% 98%;
+  --popover: 224 71% 6%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 238.7 83.5% 66.7%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 238.7 83.5% 66.7%;
+  --radius: 0.5rem;
 
   /* Core Palette — Rich obsidian slate midnight tones */
   --bg-primary: #07090e;
@@ -92,6 +118,27 @@
 /* --- Light Theme --- */
 [data-theme="light"] {
   color-scheme: light;
+
+  /* shadcn UI variables (light mode) */
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 238.7 83.5% 66.7%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 238.7 83.5% 66.7%;
 
   --bg-primary: #f8fafc;
   --bg-secondary: #f1f5f9;
@@ -814,24 +861,36 @@ a:hover {
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(8px);
-  z-index: var(--z-overlay);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1050;
   animation: fadeIn 0.2s ease both;
 }
 
 /* --- Modal --- */
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -46%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
 .modal {
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  z-index: var(--z-modal);
+  z-index: 1100;
   background: var(--bg-secondary);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-xl);
-  animation: scaleIn 0.3s ease both;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85), 0 0 40px rgba(99, 102, 241, 0.15);
+  animation: modalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
   max-width: 90vw;
   max-height: 90vh;
   overflow: auto;
@@ -947,3 +1006,15 @@ a:hover {
   align-items: center;
   justify-content: space-between;
 }
+
+/* --- Hero & Media Mask utilities --- */
+[class*="mask-radial"] {
+  -webkit-mask-image: radial-gradient(ellipse 95% 85% at center, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0) 100%);
+  mask-image: radial-gradient(ellipse 95% 85% at center, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0) 100%);
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+

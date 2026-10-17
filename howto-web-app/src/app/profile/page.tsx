@@ -1,30 +1,50 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getUserPresentations } from '@/lib/firestore';
-import { uploadBytes, ref, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase';
-import type { Presentation } from '@/lib/types';
-import { formatDate } from '@/lib/utils';
+import TechGridBackground from '@/components/ui/TechGridBackground';
+import HangingNavBar from '@/components/HangingNavBar';
+import Link from 'next/link';
+import {
+  ArrowLeft,
+  User,
+  Mail,
+  ShieldCheck,
+  Sun,
+  Moon,
+  LogOut,
+  Edit2,
+  Check,
+  X,
+  Layers,
+  Globe,
+  Sparkles,
+  Users,
+} from 'lucide-react';
+import type { UserRole } from '@/lib/types';
+import { ROLE_INFO } from '@/lib/types';
 import toast from 'react-hot-toast';
-import Navbar from '@/components/Navbar';
 import styles from './profile.module.css';
 
 export default function ProfilePage() {
-  const { user, loading, signOut, updateUserProfile, resetPassword } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const router = useRouter();
+  const { user, loading, signOut, updateUserProfile, changeUsername, setUserRole } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
-  const [presentations, setPresentations] = useState<Presentation[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
+  const [totalPresentations, setTotalPresentations] = useState(0);
+  const [publicPresentations, setPublicPresentations] = useState(0);
+
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
-  const [savingName, setSavingName] = useState(false);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [resettingPassword, setResettingPassword] = useState(false);
+  const [isSavingName, setIsSavingName] = useState(false);
+
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [usernameInput, setUsernameInput] = useState('');
+  const [isSavingUsername, setIsSavingUsername] = useState(false);
+  const [isSavingRole, setIsSavingRole] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -35,252 +55,405 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user) {
       setNameInput(user.displayName || '');
-      loadUserData();
+      setUsernameInput(user.username || '');
+      getUserPresentations(user.uid).then((items) => {
+        setTotalPresentations(items.length);
+        setPublicPresentations(items.filter((p) => p.visibility === 'public').length);
+      });
     }
   }, [user]);
 
-  const loadUserData = async () => {
-    if (!user) return;
+  const handleSelectRole = async (newRole: UserRole) => {
+    setIsSavingRole(true);
     try {
-      const data = await getUserPresentations(user.uid);
-      setPresentations(data);
-    } catch (err) {
-      console.warn('Failed to load user presentations:', err);
+      const res = await setUserRole(newRole);
+      if (res.success) {
+        toast.success(`Switched network role to ${ROLE_INFO[newRole].title}!`);
+      } else {
+        toast.error(res.error || 'Failed to update network role');
+      }
+    } catch {
+      toast.error('Failed to update network role');
     } finally {
-      setLoadingData(false);
+      setIsSavingRole(false);
     }
   };
 
-  const handleSaveName = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!nameInput.trim() || nameInput.trim() === user?.displayName) {
-      setIsEditingName(false);
-      return;
-    }
-    setSavingName(true);
+  const handleSaveName = async () => {
+    if (!nameInput.trim()) return;
+    setIsSavingName(true);
     try {
       await updateUserProfile(nameInput.trim());
-      toast.success('Name updated!');
+      toast.success('Display name updated');
       setIsEditingName(false);
     } catch {
       toast.error('Failed to update name');
     } finally {
-      setSavingName(false);
+      setIsSavingName(false);
     }
   };
 
-  const handleAvatarUpload = async (file: File) => {
-    if (!user) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Photo must be under 5MB');
+  const handleSaveUsername = async () => {
+    const clean = usernameInput.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+    if (!clean || clean.length < 3) {
+      toast.error('Username must be at least 3 characters (e.g. @abc123)');
       return;
     }
-    setUploadingPhoto(true);
+    setIsSavingUsername(true);
     try {
-      const storageRef = ref(storage, `avatars/${user.uid}/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const photoURL = await getDownloadURL(storageRef);
-      await updateUserProfile(user.displayName, photoURL);
-      toast.success('Profile photo updated!');
-    } catch {
-      toast.error('Failed to update profile photo');
+      const res = await changeUsername(`@${clean}`);
+      if (res.success) {
+        toast.success(`Username updated to @${clean}`);
+        setIsEditingUsername(false);
+      } else {
+        toast.error(res.error || 'Failed to update username');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Error updating username');
     } finally {
-      setUploadingPhoto(false);
+      setIsSavingUsername(false);
     }
   };
 
-  const handlePasswordReset = async () => {
-    if (!user?.email) return;
-    setResettingPassword(true);
+  const handleSignOut = async () => {
     try {
-      await resetPassword(user.email);
-      toast.success(`Password reset link sent to ${user.email}`);
+      await signOut();
+      toast.success('Signed out successfully');
+      router.push('/login');
     } catch {
-      toast.error('Failed to send password reset email');
-    } finally {
-      setResettingPassword(false);
+      toast.error('Failed to sign out');
     }
   };
 
   if (loading || !user) {
     return (
-      <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="animate-spin" style={{ fontSize: '2rem' }}>⬡</div>
+      <div className={styles.profileContainer} style={{ justifyContent: 'center', alignItems: 'center' }}>
+        <div style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: 14 }}>Loading profile...</div>
       </div>
     );
   }
 
-  // Calculate live stats
-  const totalPresentations = presentations.length;
-  const publicCount = presentations.filter((p) => p.visibility === 'public').length;
-  const privateCount = presentations.filter((p) => p.visibility === 'private').length;
-  const totalForksReceived = presentations.reduce((sum, p) => sum + (p.forkCount || 0), 0);
-
   return (
-    <div className={styles.profilePage}>
-      <Navbar />
+    <div className={styles.profileContainer}>
+      {/* ─── Tech Grid Ambient Background (Subtle Techy Matrix & Data Traces) ─── */}
+      <TechGridBackground />
 
-      {/* Main Content */}
-      <main className={styles.main}>
-        {/* Profile Card */}
-        <div className={styles.profileCard}>
-          <div className={styles.avatarWrapper}>
-            <div className={styles.avatar}>
+      <main className={styles.mainWrapper}>
+        {/* Top Header Navigation */}
+        <div className={styles.topNavRow}>
+          <Link href="/home" className={styles.backBtn}>
+            <ArrowLeft size={16} />
+            <span>Home</span>
+          </Link>
+          <h1 className={styles.pageHeading}>Profile & Account</h1>
+          <div style={{ width: 80 }} /> {/* balance spacer */}
+        </div>
+
+        {/* Core Profile Card */}
+        <section className={styles.profileCard}>
+          <div className={styles.userHeader}>
+            <div className={styles.avatarLargeWrapper}>
               {user.photoURL ? (
-                <img src={user.photoURL} alt={user.displayName} />
+                <img
+                  src={user.photoURL}
+                  alt={user.displayName || 'User Avatar'}
+                  className={styles.avatarImg}
+                />
               ) : (
-                <span>{user.displayName?.charAt(0).toUpperCase() || 'U'}</span>
-              )}
-            </div>
-            <label className={styles.avatarUploadBtn} title="Change profile photo">
-              {uploadingPhoto ? '⏳' : '📷'}
-              <input
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                disabled={uploadingPhoto}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleAvatarUpload(file);
-                }}
-              />
-            </label>
-          </div>
-
-          <div className={styles.profileInfo}>
-            <div className={styles.nameRow}>
-              {isEditingName ? (
-                <form onSubmit={handleSaveName} className={styles.nameEditForm}>
-                  <input
-                    className={styles.nameInput}
-                    value={nameInput}
-                    onChange={(e) => setNameInput(e.target.value)}
-                    autoFocus
-                    required
-                  />
-                  <button type="submit" className="btn btn-primary btn-sm" disabled={savingName}>
-                    {savingName ? 'Saving...' : 'Save'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => {
-                      setIsEditingName(false);
-                      setNameInput(user.displayName || '');
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </form>
-              ) : (
-                <>
-                  <h1 className={styles.userName}>{user.displayName}</h1>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => setIsEditingName(true)}
-                    title="Edit Name"
-                    style={{ fontSize: '12px' }}
-                  >
-                    ✎ Edit
-                  </button>
-                </>
+                <div className={styles.avatarInitial}>
+                  {(user.displayName || user.email || 'U')[0].toUpperCase()}
+                </div>
               )}
             </div>
 
-            <p className={styles.userEmail}>
-              <span>✉</span> {user.email}
-              <span className={styles.roleBadge}>✓ Verified Creator</span>
-            </p>
+            <div className={styles.userInfo}>
+              <div className={styles.displayNameRow}>
+                {isEditingName ? (
+                  <div>
+                    <input
+                      type="text"
+                      className={styles.editNameInput}
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                      placeholder="Your full name"
+                      autoFocus
+                    />
+                    <div className={styles.nameActionBtns}>
+                      <button
+                        className={styles.saveBtn}
+                        onClick={handleSaveName}
+                        disabled={isSavingName}
+                      >
+                        <Check size={12} style={{ marginRight: 4 }} />
+                        Save
+                      </button>
+                      <button
+                        className={styles.cancelBtn}
+                        onClick={() => {
+                          setNameInput(user.displayName || '');
+                          setIsEditingName(false);
+                        }}
+                      >
+                        <X size={12} style={{ marginRight: 4 }} />
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <h2 className={styles.displayName}>
+                      {user.displayName || 'Creator'}
+                    </h2>
+                    <button
+                      className={styles.editToggleBtn}
+                      onClick={() => setIsEditingName(true)}
+                      title="Edit display name"
+                    >
+                      <Edit2 size={14} />
+                    </button>
+                  </>
+                )}
+                <span className={styles.badge}>
+                  <span>{(ROLE_INFO[user.role || 'teacher'] || ROLE_INFO.teacher).icon}</span>
+                  <span style={{ marginLeft: 4 }}>{(ROLE_INFO[user.role || 'teacher'] || ROLE_INFO.teacher).title}</span>
+                </span>
+                <span className={styles.badge} style={{ borderColor: 'rgba(251, 191, 36, 0.45)', color: '#fbbf24', background: 'rgba(251, 191, 36, 0.12)' }}>
+                  ⭐ {user.creatorScore || 0} pts
+                </span>
+              </div>
 
-            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={() => router.push('/dashboard')}
-              >
-                📑 View Presentations
-              </button>
+              {/* Creator Handle (@username) Row */}
+              <div className={styles.usernameRow}>
+                {isEditingUsername ? (
+                  <div className={styles.editUsernameGroup}>
+                    <div className={styles.editUsernameWrapper}>
+                      <span className={styles.atSymbol}>@</span>
+                      <input
+                        type="text"
+                        className={styles.editUsernameInput}
+                        value={usernameInput.startsWith('@') ? usernameInput.slice(1) : usernameInput}
+                        onChange={(e) => {
+                          const val = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                          setUsernameInput(val ? `@${val}` : '');
+                        }}
+                        placeholder="username (e.g. abc123)"
+                        autoFocus
+                      />
+                    </div>
+                    <div className={styles.nameActionBtns}>
+                      <button
+                        className={styles.saveBtn}
+                        onClick={handleSaveUsername}
+                        disabled={isSavingUsername}
+                      >
+                        <Check size={12} style={{ marginRight: 4 }} />
+                        {isSavingUsername ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        className={styles.cancelBtn}
+                        onClick={() => {
+                          setUsernameInput(user.username || '');
+                          setIsEditingUsername(false);
+                        }}
+                      >
+                        <X size={12} style={{ marginRight: 4 }} />
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={styles.usernameDisplayWrapper}>
+                    <span className={styles.usernameBadge}>
+                      {user.username || `@user_${user.uid.slice(0, 5)}`}
+                    </span>
+                    <button
+                      className={styles.editToggleBtn}
+                      onClick={() => {
+                        setUsernameInput(user.username || '');
+                        setIsEditingUsername(true);
+                      }}
+                      title="Edit handle (@username)"
+                    >
+                      <Edit2 size={13} />
+                      <span style={{ fontSize: 12, marginLeft: 5 }}>Change Handle</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.userEmail}>
+                <Mail size={13} style={{ display: 'inline', marginRight: 6, verticalAlign: -1 }} />
+                {user.email || 'Anonymous / Guest'}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Stats Grid */}
-        <div>
-          <h2 className={styles.sectionTitle}>Presentation Stats</h2>
+          {/* Quick Stats Grid */}
           <div className={styles.statsGrid}>
-            <div className={styles.statCard}>
-              <span className={styles.statIcon}>📑</span>
-              <span className={styles.statValue}>
-                {loadingData ? '—' : totalPresentations}
+            <div className={styles.statItem}>
+              <span className={styles.statValue}>{totalPresentations}</span>
+              <span className={styles.statLabel}>
+                <Layers size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
+                Total Presentations
               </span>
-              <span className={styles.statLabel}>Total Decks</span>
             </div>
-
-            <div className={styles.statCard}>
-              <span className={styles.statIcon}>🌎</span>
-              <span className={styles.statValue}>
-                {loadingData ? '—' : publicCount}
+            <div className={styles.statItem}>
+              <span className={styles.statValue}>{publicPresentations}</span>
+              <span className={styles.statLabel}>
+                <Globe size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />
+                Public Presentations
               </span>
-              <span className={styles.statLabel}>Public Presentations</span>
             </div>
-
-            <div className={styles.statCard}>
-              <span className={styles.statIcon}>🔒</span>
-              <span className={styles.statValue}>
-                {loadingData ? '—' : privateCount}
+            <div className={styles.statItem}>
+              <span className={styles.statValue}>{(user.following || []).length}</span>
+              <span className={styles.statLabel}>
+                <Users size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: -1, color: '#818cf8' }} />
+                Following
               </span>
-              <span className={styles.statLabel}>Private Presentations</span>
             </div>
-
-            <div className={styles.statCard}>
-              <span className={styles.statIcon}>🍴</span>
-              <span className={styles.statValue}>
-                {loadingData ? '—' : totalForksReceived}
-              </span>
-              <span className={styles.statLabel}>Forks Received</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Account Settings */}
-        <div>
-          <h2 className={styles.sectionTitle}>Account & Preferences</h2>
-          <div className={styles.settingsCard}>
-            <div className={styles.settingRow}>
-              <div className={styles.settingInfo}>
-                <h4>Interface Theme</h4>
-                <p>Switch between light and dark mode appearance</p>
-              </div>
-              <button className="btn btn-secondary btn-sm" onClick={toggleTheme}>
-                {theme === 'dark' ? '🌙 Dark Mode' : '☀️ Light Mode'}
-              </button>
-            </div>
-
-            <div className={styles.settingRow}>
-              <div className={styles.settingInfo}>
-                <h4>Password Security</h4>
-                <p>Send a secure password reset link to your email</p>
-              </div>
-              <button
-                className="btn btn-secondary btn-sm"
-                onClick={handlePasswordReset}
-                disabled={resettingPassword}
-              >
-                {resettingPassword ? 'Sending...' : '🔑 Reset Password'}
-              </button>
-            </div>
-
-            <div className={styles.settingRow}>
-              <div className={styles.settingInfo}>
-                <h4>Member Since</h4>
-                <p>Your HowTo-Web platform account registration date</p>
-              </div>
-              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                {user.createdAt ? formatDate(user.createdAt) : 'Active User'}
+            <div className={styles.statItem}>
+              <span className={styles.statValue} style={{ color: '#fbbf24' }}>{user.creatorScore || 0}</span>
+              <span className={styles.statLabel}>
+                <Sparkles size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: -1, color: '#fbbf24' }} />
+                Creator Score (pts)
               </span>
             </div>
           </div>
-        </div>
+        </section>
+
+        {/* ─── Creator Score & Points Card ─── */}
+        <section className={styles.scoreCard}>
+          <div className={styles.scoreHeaderRow}>
+            <div>
+              <h3 className={styles.cardSectionTitle} style={{ marginBottom: 4 }}>
+                Creator Score &amp; Activity Points
+              </h3>
+              <p style={{ fontSize: 13, color: '#94a3b8' }}>
+                Earn points when other community members follow you, or fork/like your public presentations.
+              </p>
+            </div>
+            <div className={styles.scoreHeroValue}>
+              <span className={styles.scoreNumber}>{user.creatorScore || 0}</span>
+              <span className={styles.scoreUnit}>points</span>
+            </div>
+          </div>
+
+          <div className={styles.scoreBreakdownGrid}>
+            <div className={styles.scoreBreakdownItem}>
+              <div className={styles.scoreItemIcon}>👥</div>
+              <div className={styles.scoreItemMeta}>
+                <div className={styles.scoreItemTitle}>{(user.followers || []).length} Followers</div>
+                <div className={styles.scoreItemSubtitle}>+15 pts per follower on the platform</div>
+              </div>
+              <span className={styles.scoreItemPts}>+{(user.followers || []).length * 15} pts</span>
+            </div>
+
+            <div className={styles.scoreBreakdownItem}>
+              <div className={styles.scoreItemIcon}>❤️</div>
+              <div className={styles.scoreItemMeta}>
+                <div className={styles.scoreItemTitle}>{user.likesReceived || 0} Likes Received</div>
+                <div className={styles.scoreItemSubtitle}>+10 pts per like on your slides</div>
+              </div>
+              <span className={styles.scoreItemPts}>+{(user.likesReceived || 0) * 10} pts</span>
+            </div>
+
+            <div className={styles.scoreBreakdownItem}>
+              <div className={styles.scoreItemIcon}>🍴</div>
+              <div className={styles.scoreItemMeta}>
+                <div className={styles.scoreItemTitle}>{user.forksReceived || 0} Forks Received</div>
+                <div className={styles.scoreItemSubtitle}>+25 pts when someone forks your work</div>
+              </div>
+              <span className={styles.scoreItemPts}>+{(user.forksReceived || 0) * 25} pts</span>
+            </div>
+
+            <div className={styles.scoreBreakdownItem}>
+              <div className={styles.scoreItemIcon}>🏆</div>
+              <div className={styles.scoreItemMeta}>
+                <div className={styles.scoreItemTitle}>Community Standing</div>
+                <div className={styles.scoreItemSubtitle}>
+                  {(user.creatorScore || 0) >= 100 ? 'Master Contributor' : (user.creatorScore || 0) > 0 ? 'Rising Creator' : 'New Contributor'}
+                </div>
+              </div>
+              <span className={styles.scoreItemPts} style={{ color: '#a78bfa' }}>Active</span>
+            </div>
+          </div>
+        </section>
+
+        {/* ─── Network Role & Identity Selection Card ─── */}
+        <section className={styles.settingsCard}>
+          <h3 className={styles.cardSectionTitle} style={{ marginBottom: 4 }}>
+            Network Role &amp; Identity
+          </h3>
+          <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 16 }}>
+            Determine whether you are a <strong>Teacher</strong>, <strong>Learner</strong>, or <strong>Creator</strong>. Your choice changes your identity badge and switches your home network branding to <em>Teachers Network</em>, <em>Learners Network</em>, or <em>Creator Network</em>.
+          </p>
+
+          <div className={styles.roleCardsGrid}>
+            {(['teacher', 'learner', 'creator'] as const).map((r) => {
+              const info = ROLE_INFO[r];
+              const isSelected = (user.role || 'teacher') === r;
+              return (
+                <button
+                  key={r}
+                  type="button"
+                  disabled={isSavingRole}
+                  className={`${styles.roleCard} ${isSelected ? styles.roleCardActive : ''}`}
+                  onClick={() => handleSelectRole(r)}
+                >
+                  {isSelected && (
+                    <div className={styles.roleActiveCheck}>✓</div>
+                  )}
+                  <div className={styles.roleIconBadge}>{info.icon}</div>
+                  <div className={styles.roleTitle}>{info.title}</div>
+                  <div className={styles.roleNetworkName}>{info.network}</div>
+                  <div className={styles.roleDesc}>{info.desc}</div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Preferences & Settings Card */}
+        <section className={styles.settingsCard}>
+          <h3 className={styles.cardSectionTitle}>Preferences</h3>
+
+          <div className={styles.settingRow}>
+            <div className={styles.settingLeft}>
+              <div className={styles.settingIcon}>
+                {theme === 'dark' ? <Moon size={20} /> : <Sun size={20} />}
+              </div>
+              <div>
+                <div className={styles.settingTitle}>Appearance Mode</div>
+                <div className={styles.settingDesc}>
+                  Currently using {theme === 'dark' ? 'Dark theme' : 'Light theme'}
+                </div>
+              </div>
+            </div>
+
+            <button className={styles.themeToggleBtn} onClick={toggleTheme}>
+              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+              <span>{theme === 'dark' ? 'Switch to Light' : 'Switch to Dark'}</span>
+            </button>
+          </div>
+        </section>
+
+        {/* Sign Out Card */}
+        <section className={styles.logoutCard}>
+          <div>
+            <div className={styles.logoutInfoTitle}>Session & Security</div>
+            <div className={styles.logoutInfoDesc}>
+              Log out of your HowTo-Web creator session on this device.
+            </div>
+          </div>
+          <button className={styles.logoutBtn} onClick={handleSignOut}>
+            <LogOut size={16} />
+            <span>Sign Out</span>
+          </button>
+        </section>
       </main>
+
+      {/* ─── Hanging Bottom Navigation Bar (Point 1 Access) ─── */}
+      <HangingNavBar activeTab="profile" />
     </div>
   );
 }

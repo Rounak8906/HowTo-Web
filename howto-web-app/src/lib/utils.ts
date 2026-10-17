@@ -1,3 +1,10 @@
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
 // Firestore collection/document path helpers
 export const COLLECTIONS = {
   USERS: 'users',
@@ -107,4 +114,33 @@ export function formatFileSize(bytes: number): string {
 // Clamp a number between min and max
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+// Adjust hex color brightness for realistic lighting
+export function adjustColor(color: string, percent: number): string {
+  if (!color || !color.startsWith('#')) return color;
+  let hex = color.replace('#', '');
+  if (hex.length === 3) {
+    hex = hex.split('').map((c) => c + c).join('');
+  }
+  const num = parseInt(hex, 16);
+  if (isNaN(num)) return color;
+  let r = (num >> 16);
+  let g = ((num >> 8) & 0x00ff);
+  let b = (num & 0x0000ff);
+
+  if (percent > 0) {
+    r += Math.round((255 - r) * (percent / 100));
+    g += Math.round((255 - g) * (percent / 100));
+    b += Math.round((255 - b) * (percent / 100));
+  } else {
+    const factor = (100 + percent) / 100;
+    r = Math.round(r * factor);
+    g = Math.round(g * factor);
+    b = Math.round(b * factor);
+  }
+  r = Math.min(255, Math.max(0, r));
+  g = Math.min(255, Math.max(0, g));
+  b = Math.min(255, Math.max(0, b));
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
 }
